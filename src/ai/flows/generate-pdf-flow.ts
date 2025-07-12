@@ -6,8 +6,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { PDFDocument } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
@@ -16,7 +15,6 @@ import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitio
 
 // Helper functions (adapted from pdf-utils)
 const FONT_SIZE = 10;
-let fontBytes: Buffer | null = null;
 let pdfTemplateBytes = {
     main: null as Buffer | null,
     kellekszavatossag: null as Buffer | null,
@@ -24,10 +22,6 @@ let pdfTemplateBytes = {
 };
 
 async function loadAssets() {
-    if (!fontBytes) {
-        const fontPath = path.join(process.cwd(), 'public', 'LiberationSans-Regular.ttf');
-        fontBytes = await fs.readFile(fontPath);
-    }
     if (!pdfTemplateBytes.main) {
         const mainPath = path.join(process.cwd(), 'public', 'sablon.pdf');
         pdfTemplateBytes.main = await fs.readFile(mainPath);
@@ -57,11 +51,9 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
 
 async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void) {
     if (!templateBytes) throw new Error("PDF template is not loaded.");
-    if (!fontBytes) throw new Error("Font is not loaded.");
 
     const pdfDoc = await PDFDocument.load(templateBytes);
-    pdfDoc.registerFontkit(fontkit);
-    const customFont = await pdfDoc.embedFont(fontBytes);
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
     
     const form = pdfDoc.getForm();
     fillerFn(form, data);
@@ -70,7 +62,7 @@ async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn:
         try {
            if (field.getName()) {
                const tf = form.getTextField(field.getName());
-               tf.updateAppearances(customFont);
+               tf.updateAppearances(helveticaFont);
            }
         } catch (e) {
             // Not a text field, ignore
