@@ -15,7 +15,7 @@ import fontkit from '@pdf-lib/fontkit';
 
 
 // Helper functions (adapted from pdf-utils)
-const FONT_SIZE = 10;
+const FONT_SIZE = 12;
 let pdfTemplateBytes = {
     main: null as Buffer | null,
     kellekszavatossag: null as Buffer | null,
