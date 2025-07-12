@@ -3,9 +3,29 @@ import type { FormValues } from './definitions';
 import type { PDFDocument, PDFFont } from 'pdf-lib';
 
 const FONT_SIZE = 10;
+let customFont: PDFFont | null = null;
+let fontBytes: ArrayBuffer | null = null;
+
 
 async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
-    return await pdfDoc.embedFont('Helvetica');
+    if (customFont) return customFont;
+
+    if (!fontBytes) {
+        // Fetch the font from a public URL. This avoids issues with local file paths.
+        const fontUrl = '/Inter-Regular.ttf';
+        fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+    }
+
+    if (!pdfDoc.fontkit) {
+        if(window.fontkit) {
+            pdfDoc.registerFontkit(window.fontkit);
+        } else {
+            throw new Error("Fontkit not loaded. Please check the script tag in layout.tsx");
+        }
+    }
+    
+    customFont = await pdfDoc.embedFont(fontBytes);
+    return customFont;
 }
 
 export const loadPdfTemplates = async () => {
@@ -196,12 +216,17 @@ export async function fillAndDownloadAll(data: FormValues, pdfDocs: any) {
     }
     const filenameBase = getFilenameBase(data);
 
+    // Reset the font for each new PDF generation process
+    customFont = null;
+
     const mainPdfBytes = await fillMainPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.main.save()), data);
     downloadPdf(mainPdfBytes, `${filenameBase}-adasveteli.pdf`);
 
+    customFont = null;
     const warrantyPdfBytes = await fillWarrantyPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.kellekszavatossag.save()), data);
     downloadPdf(warrantyPdfBytes, `${filenameBase}-kellekszavatossagi.pdf`);
     
+    customFont = null;
     const authPdfBytes = await fillAuthPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.meghatalmazas.save()), data);
     downloadPdf(authPdfBytes, `${filenameBase}-meghatalmazas.pdf`);
 }
@@ -210,6 +235,10 @@ export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: '
      if (!pdfDocs[type]) {
         throw new Error(`${type} PDF sablon nincs betöltve.`);
     }
+    
+    // Reset the font for each new PDF generation process
+    customFont = null;
+
     let pdfBytes;
     const docCopy = await window.PDFLib.PDFDocument.load(await pdfDocs[type].save());
 
@@ -227,5 +256,8 @@ export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: '
     iframe.style.display = 'none';
     iframe.src = url;
     document.body.appendChild(iframe);
-    iframe.contentWindow?.print();
+    
+    iframe.onload = () => {
+        iframe.contentWindow?.print();
+    };
 }
