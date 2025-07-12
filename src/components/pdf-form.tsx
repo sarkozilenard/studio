@@ -28,6 +28,32 @@ type PdfFormProps = {
   }
 }
 
+const getDefaultValues = () => {
+    const today = new Date();
+    const year = today.getFullYear().toString();
+    const monthIndex = today.getMonth();
+    const day = today.getDate().toString();
+    const monthName = monthNames[monthIndex];
+    const formattedDateForInput = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    return {
+      rendszam: "", alvazszam: "", motorszam: "", km_allas: "", torzskonyv_szam: "", forgalmi_szam: "", gyartmany_tipus: "",
+      ceg_neve: "", ceg_kepviselo: "", cegjegyzekszam: "", szekhely: "",
+      vevo_nev: "", vevo_szul_hely_ido: "", vevo_anyja_neve: "", vevo_okmany_szam: "", vevo_lakcim: "",
+      meghatalmazott_adatok: "", kell_tovabbi_info: "",
+      tanu1_nev: "", tanu1_lakcim: "", tanu1_szig: "",
+      tanu2_nev: "", tanu2_lakcim: "", tanu2_szig: "",
+      vetelar_szam: "", vetelar_betukkel: "", fizetesi_mod: "készpénz", egyeb_fizetesi_mod: "",
+      km_idopont: formattedDateForInput,
+      atadas_ev: year, atadas_ho: monthName, atadas_nap: day,
+      hataly_ev: year, hataly_ho: monthName, hataly_nap: day,
+      birtok_ev: year, birtok_ho: monthName, birtok_nap: day,
+      szerzodes_ev: year, szerzodes_ho: monthName, szerrzodes_nap: day,
+      birtok_ora: "12", birtok_perc: "00",
+      fizetesi_datum: formattedDateForInput
+    };
+};
+
 export default function PdfForm({ pdfDocs }: PdfFormProps) {
   const { toast } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -36,31 +62,7 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
   
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
-    defaultValues: () => {
-      const today = new Date();
-      const year = today.getFullYear().toString();
-      const monthIndex = today.getMonth();
-      const day = today.getDate().toString();
-      const monthName = monthNames[monthIndex];
-      const formattedDateForInput = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-      
-      return {
-        rendszam: "", alvazszam: "", motorszam: "", km_allas: "", torzskonyv_szam: "", forgalmi_szam: "", gyartmany_tipus: "",
-        ceg_neve: "", ceg_kepviselo: "", cegjegyzekszam: "", szekhely: "",
-        vevo_nev: "", vevo_szul_hely_ido: "", vevo_anyja_neve: "", vevo_okmany_szam: "", vevo_lakcim: "",
-        meghatalmazott_adatok: "", kell_tovabbi_info: "",
-        tanu1_nev: "", tanu1_lakcim: "", tanu1_szig: "",
-        tanu2_nev: "", tanu2_lakcim: "", tanu2_szig: "",
-        vetelar_szam: "", vetelar_betukkel: "", fizetesi_mod: "készpénz", egyeb_fizetesi_mod: "",
-        km_idopont: formattedDateForInput,
-        atadas_ev: year, atadas_ho: monthName, atadas_nap: day,
-        hataly_ev: year, hataly_ho: monthName, hataly_nap: day,
-        birtok_ev: year, birtok_ho: monthName, birtok_nap: day,
-        szerzodes_ev: year, szerzodes_ho: monthName, szerrzodes_nap: day,
-        birtok_ora: "12", birtok_perc: "00",
-        fizetesi_datum: formattedDateForInput
-      };
-    }
+    defaultValues: getDefaultValues(),
   });
 
   const fizetesiMod = form.watch("fizetesi_mod");
