@@ -3,38 +3,30 @@ import type { FormValues } from './definitions';
 import type { PDFDocument, PDFFont } from 'pdf-lib';
 
 const FONT_SIZE = 10;
-let customFont: PDFFont | null = null;
 let fontBytes: ArrayBuffer | null = null;
+let pdfTemplateBytes = {
+    main: null as ArrayBuffer | null,
+    kellekszavatossag: null as ArrayBuffer | null,
+    meghatalmazas: null as ArrayBuffer | null,
+};
 
 
 async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
-    if (customFont) return customFont;
-
     if (!fontBytes) {
-        // Fetch the font from a public URL. This avoids issues with local file paths.
         const fontUrl = '/Inter-Regular.ttf';
         fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
     }
 
-    if (!pdfDoc.fontkit) {
-        if(window.fontkit) {
-            pdfDoc.registerFontkit(window.fontkit);
-        } else {
-            throw new Error("Fontkit not loaded. Please check the script tag in layout.tsx");
-        }
+    if (!window.fontkit) {
+        throw new Error("Fontkit not loaded. Please check the script tag in layout.tsx");
     }
     
-    customFont = await pdfDoc.embedFont(fontBytes);
-    return customFont;
+    pdfDoc.registerFontkit(window.fontkit);
+    
+    return pdfDoc.embedFont(fontBytes);
 }
 
 export const loadPdfTemplates = async () => {
-    const templates = {
-        main: null as PDFDocument | null,
-        kellekszavatossag: null as PDFDocument | null,
-        meghatalmazas: null as PDFDocument | null,
-    };
-
     try {
         const [mainRes, kellekRes, meghatRes] = await Promise.all([
             fetch('/sablon.pdf'),
@@ -42,16 +34,22 @@ export const loadPdfTemplates = async () => {
             fetch('/meghatalmazas_okmanyiroda.pdf'),
         ]);
 
-        if (mainRes.ok) templates.main = await window.PDFLib.PDFDocument.load(await mainRes.arrayBuffer());
-        if (kellekRes.ok) templates.kellekszavatossag = await window.PDFLib.PDFDocument.load(await kellekRes.arrayBuffer());
-        if (meghatRes.ok) templates.meghatalmazas = await window.PDFLib.PDFDocument.load(await meghatRes.arrayBuffer());
+        if (mainRes.ok) pdfTemplateBytes.main = await mainRes.arrayBuffer();
+        if (kellekRes.ok) pdfTemplateBytes.kellekszavatossag = await kellekRes.arrayBuffer();
+        if (meghatRes.ok) pdfTemplateBytes.meghatalmazas = await meghatRes.arrayBuffer();
 
     } catch (error) {
         console.error("Error loading PDF templates:", error);
         throw new Error("Hiba a PDF sablonok betöltése közben.");
     }
-
-    return templates;
+    
+    // Return a dummy object so the UI knows loading is complete.
+    // The actual template bytes are stored in the module-level variable.
+    return {
+        main: pdfTemplateBytes.main ? true : null,
+        kellekszavatossag: pdfTemplateBytes.kellekszavatossag ? true : null,
+        meghatalmazas: pdfTemplateBytes.meghatalmazas ? true : null,
+    };
 };
 
 const fillFormField = (form: any, fieldName: string, value: string | undefined) => {
@@ -64,7 +62,9 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
     }
 };
 
-async function fillMainPdf(pdfDoc: PDFDocument, data: FormValues) {
+async function fillMainPdf(data: FormValues) {
+    if (!pdfTemplateBytes.main) throw new Error("Adásvételi PDF sablon nincs betöltve.");
+    const pdfDoc = await window.PDFLib.PDFDocument.load(pdfTemplateBytes.main);
     const form = pdfDoc.getForm();
     const font = await getFont(pdfDoc);
     
@@ -134,7 +134,9 @@ async function fillMainPdf(pdfDoc: PDFDocument, data: FormValues) {
     return pdfDoc.save();
 }
 
-async function fillWarrantyPdf(pdfDoc: PDFDocument, data: FormValues) {
+async function fillWarrantyPdf(data: FormValues) {
+    if (!pdfTemplateBytes.kellekszavatossag) throw new Error("Kellékszavatossági PDF sablon nincs betöltve.");
+    const pdfDoc = await window.PDFLib.PDFDocument.load(pdfTemplateBytes.kellekszavatossag);
     const form = pdfDoc.getForm();
     const font = await getFont(pdfDoc);
     const today = new Date();
@@ -157,7 +159,9 @@ async function fillWarrantyPdf(pdfDoc: PDFDocument, data: FormValues) {
     return pdfDoc.save();
 }
 
-async function fillAuthPdf(pdfDoc: PDFDocument, data: FormValues) {
+async function fillAuthPdf(data: FormValues) {
+    if (!pdfTemplateBytes.meghatalmazas) throw new Error("Meghatalmazás PDF sablon nincs betöltve.");
+    const pdfDoc = await window.PDFLib.PDFDocument.load(pdfTemplateBytes.meghatalmazas);
     const form = pdfDoc.getForm();
     const font = await getFont(pdfDoc);
 
@@ -211,42 +215,33 @@ const getFilenameBase = (data: FormValues) => {
 };
 
 export async function fillAndDownloadAll(data: FormValues, pdfDocs: any) {
-    if (!pdfDocs.main || !pdfDocs.kellekszavatossag || !pdfDocs.meghatalmazas) {
+    if (!pdfTemplateBytes.main || !pdfTemplateBytes.kellekszavatossag || !pdfTemplateBytes.meghatalmazas) {
         throw new Error("Nem minden PDF sablon van betöltve.");
     }
     const filenameBase = getFilenameBase(data);
 
-    // Reset the font for each new PDF generation process
-    customFont = null;
-    const mainPdfBytes = await fillMainPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.main.save()), data);
+    const mainPdfBytes = await fillMainPdf(data);
     downloadPdf(mainPdfBytes, `${filenameBase}-adasveteli.pdf`);
 
-    customFont = null;
-    const warrantyPdfBytes = await fillWarrantyPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.kellekszavatossag.save()), data);
+    const warrantyPdfBytes = await fillWarrantyPdf(data);
     downloadPdf(warrantyPdfBytes, `${filenameBase}-kellekszavatossagi.pdf`);
     
-    customFont = null;
-    const authPdfBytes = await fillAuthPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.meghatalmazas.save()), data);
+    const authPdfBytes = await fillAuthPdf(data);
     downloadPdf(authPdfBytes, `${filenameBase}-meghatalmazas.pdf`);
 }
 
 export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: 'main' | 'kellekszavatossag' | 'meghatalmazas') {
-     if (!pdfDocs[type]) {
+     if (!pdfTemplateBytes[type]) {
         throw new Error(`${type} PDF sablon nincs betöltve.`);
     }
     
-    // Reset the font for each new PDF generation process
-    customFont = null;
-
     let pdfBytes;
-    const docCopy = await window.PDFLib.PDFDocument.load(await pdfDocs[type].save());
-
     if (type === 'main') {
-        pdfBytes = await fillMainPdf(docCopy, data);
+        pdfBytes = await fillMainPdf(data);
     } else if (type === 'kellekszavatossag') {
-        pdfBytes = await fillWarrantyPdf(docCopy, data);
+        pdfBytes = await fillWarrantyPdf(data);
     } else {
-        pdfBytes = await fillAuthPdf(docCopy, data);
+        pdfBytes = await fillAuthPdf(data);
     }
 
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });

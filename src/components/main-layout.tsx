@@ -7,14 +7,13 @@ import SavedDataView from "./saved-data-view";
 import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { loadPdfTemplates } from "@/lib/pdf-utils";
-import type { PDFDocument } from 'pdf-lib';
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PdfDocs = {
-  main: PDFDocument | null;
-  kellekszavatossag: PDFDocument | null;
-  meghatalmazas: PDFDocument | null;
+  main: boolean | null;
+  kellekszavatossag: boolean | null;
+  meghatalmazas: boolean | null;
 };
 
 export default function MainLayout() {

@@ -15,16 +15,15 @@ import { addDoc, collection, getDocs, query, serverTimestamp } from "firebase/fi
 import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
 import { fillAndDownloadAll, fillAndPrintSingle } from "@/lib/pdf-utils";
-import type { PDFDocument } from "pdf-lib";
 import { Download, Printer, Save, Trash2, Loader2 } from "lucide-react";
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
 
 type PdfFormProps = {
   pdfDocs: {
-    main: PDFDocument | null;
-    kellekszavatossag: PDFDocument | null;
-    meghatalmazas: PDFDocument | null;
+    main: boolean | null;
+    kellekszavatossag: boolean | null;
+    meghatalmazas: boolean | null;
   }
 }
 
