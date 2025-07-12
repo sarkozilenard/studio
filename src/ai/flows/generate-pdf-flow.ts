@@ -6,11 +6,12 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
 import fs from 'fs/promises';
 import path from 'path';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
+import fontkit from '@pdf-lib/fontkit';
 
 
 // Helper functions (adapted from pdf-utils)
@@ -20,8 +21,18 @@ let pdfTemplateBytes = {
     kellekszavatossag: null as Buffer | null,
     meghatalmazas: null as Buffer | null,
 };
+let fontBytes: ArrayBuffer | null = null;
 
 async function loadAssets() {
+    if (!fontBytes) {
+        // Fetch a font that supports Hungarian characters
+        const fontUrl = 'https://fonts.gstatic.com/s/notosans/v27/o-0IIpQlx3QUlC5A4PNr5TRG.ttf';
+        const response = await fetch(fontUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch font: ${response.statusText}`);
+        }
+        fontBytes = await response.arrayBuffer();
+    }
     if (!pdfTemplateBytes.main) {
         const mainPath = path.join(process.cwd(), 'public', 'sablon.pdf');
         pdfTemplateBytes.main = await fs.readFile(mainPath);
@@ -51,9 +62,12 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
 
 async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void) {
     if (!templateBytes) throw new Error("PDF template is not loaded.");
+    if (!fontBytes) throw new Error("Font is not loaded.");
 
     const pdfDoc = await PDFDocument.load(templateBytes);
-    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    pdfDoc.registerFontkit(fontkit);
+    
+    const customFont = await pdfDoc.embedFont(fontBytes);
     
     const form = pdfDoc.getForm();
     fillerFn(form, data);
@@ -62,7 +76,7 @@ async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn:
         try {
            if (field.getName()) {
                const tf = form.getTextField(field.getName());
-               tf.updateAppearances(helveticaFont);
+               tf.updateAppearances(customFont);
            }
         } catch (e) {
             // Not a text field, ignore
