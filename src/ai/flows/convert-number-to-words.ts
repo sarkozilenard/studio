@@ -28,7 +28,7 @@ const prompt = ai.definePrompt({
   name: 'convertNumberToWordsPrompt',
   input: {schema: ConvertNumberToWordsInputSchema},
   output: {schema: ConvertNumberToWordsOutputSchema},
-  prompt: `Convert the number {{{number}}} to Hungarian words. The output should be capitalized and end with the word "forint". For example, if the input is 123, the output should be "Egyszázhuszonhárom forint".`,
+  prompt: `Convert the number {{{number}}} to Hungarian words. The output should be capitalized. For example, if the input is 123, the output should be "Egyszázhuszonhárom".`,
 });
 
 const convertNumberToWordsFlow = ai.defineFlow(
