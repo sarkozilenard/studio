@@ -2,12 +2,10 @@
 import type { FormValues } from './definitions';
 import type { PDFDocument, PDFFont } from 'pdf-lib';
 
-const FONT_SIZE = 15;
+const FONT_SIZE = 10;
 
 async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
-    const fontBytes = await fetch('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2bo.ttf').then(res => res.arrayBuffer());
-    pdfDoc.registerFontkit(window.fontkit);
-    return await pdfDoc.embedFont(fontBytes);
+    return await pdfDoc.embedFont('Helvetica');
 }
 
 export const loadPdfTemplates = async () => {
