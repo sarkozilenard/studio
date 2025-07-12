@@ -10,33 +10,14 @@ let pdfTemplateBytes = {
     meghatalmazas: null as ArrayBuffer | null,
 };
 
-let fontkitPromise: Promise<void> | null = null;
-
-const loadFontkit = (): Promise<void> => {
-    if (!fontkitPromise) {
-        fontkitPromise = new Promise((resolve, reject) => {
-            if (window.fontkit) {
-                return resolve();
-            }
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js';
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load fontkit.'));
-            document.head.appendChild(script);
-        });
-    }
-    return fontkitPromise;
-};
-
 async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
     if (!fontBytes) {
-        const fontUrl = '/Inter-Regular.ttf';
+        const fontUrl = '/LiberationSans-Regular.ttf';
         fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
     }
 
-    await loadFontkit();
     if (!window.fontkit) {
-        throw new Error("Fontkit not available on window object even after loading.");
+        throw new Error("Fontkit not available on window object.");
     }
     
     pdfDoc.registerFontkit(window.fontkit);
@@ -275,5 +256,3 @@ export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: '
         }
     };
 }
-
-    
