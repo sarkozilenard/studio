@@ -26,7 +26,7 @@ let fontBytes: ArrayBuffer | null = null;
 async function loadAssets() {
     if (!fontBytes) {
         // Fetch a font that supports Hungarian characters from a stable URL
-        const fontUrl = 'https://github.com/google/fonts/raw/main/ofl/notosans/NotoSans-Regular.ttf';
+        const fontUrl = 'https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf';
         const response = await fetch(fontUrl);
         if (!response.ok) {
             throw new Error(`Failed to fetch font: ${response.statusText}`);
