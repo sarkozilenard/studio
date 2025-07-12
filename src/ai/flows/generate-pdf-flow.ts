@@ -21,17 +21,18 @@ let pdfTemplateBytes = {
     kellekszavatossag: null as Buffer | null,
     meghatalmazas: null as Buffer | null,
 };
-let fontBytes: ArrayBuffer | null = null;
+let fontBytes: Buffer | null = null;
 
 async function loadAssets() {
     if (!fontBytes) {
-        // Fetch a font that supports Hungarian characters from a stable URL
-        const fontUrl = 'https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf';
-        const response = await fetch(fontUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch font: ${response.statusText}`);
+        // Load the font from the local public directory
+        const fontPath = path.join(process.cwd(), 'public', 'fonts', 'DejaVuSans.ttf');
+        try {
+            fontBytes = await fs.readFile(fontPath);
+        } catch (error) {
+            console.error(`Failed to read font file from ${fontPath}:`, error);
+            throw new Error(`Font file not found at ${fontPath}. Please ensure it has been uploaded.`);
         }
-        fontBytes = await response.arrayBuffer();
     }
     if (!pdfTemplateBytes.main) {
         const mainPath = path.join(process.cwd(), 'public', 'sablon.pdf');
