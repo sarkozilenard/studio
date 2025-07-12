@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { loadPdfTemplates } from "@/lib/pdf-utils";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeSwitcher } from "./theme-switcher";
 
 type PdfDocs = {
   main: boolean | null;
@@ -24,19 +25,19 @@ export default function MainLayout() {
   
   const handleLoadPdfs = async () => {
     setIsLoadingPdfs(true);
-    toast({ title: "PDF sablonok betöltése..." });
+    toast({ title: "PDF sablonok ellenőrzése..." });
     try {
       const docs = await loadPdfTemplates();
       setPdfDocs(docs);
       const allLoaded = Object.values(docs).every(doc => doc !== null);
       if (allLoaded) {
-        toast({ title: "PDF sablonok sikeresen betöltve!", variant: "default" });
+        toast({ title: "PDF sablonok elérhetők!", variant: "default" });
       } else {
-        toast({ title: "Egyes PDF sablonok betöltése sikertelen.", description: "Kérjük ellenőrizze a 'public' mappában a fájlokat.", variant: "destructive" });
+        toast({ title: "Egyes PDF sablonok nem érhetők el.", description: "Kérjük ellenőrizze a 'public' mappában a fájlokat.", variant: "destructive" });
       }
     } catch (error) {
       console.error(error);
-      toast({ title: "Hiba a PDF sablonok betöltésekor.", description: (error as Error).message, variant: "destructive" });
+      toast({ title: "Hiba a PDF sablonok ellenőrzésekor.", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsLoadingPdfs(false);
     }
@@ -48,10 +49,13 @@ export default function MainLayout() {
 
   return (
     <div>
-      <div className="text-center bg-primary text-primary-foreground p-8 rounded-lg shadow-lg mb-8">
-        <h1 className="text-4xl font-bold">e-Szerződés</h1>
-        <p className="text-lg opacity-90 mt-2">Járműadásvételi szerződés és kiegészítő dokumentumok kitöltő és kezelő rendszer</p>
-      </div>
+       <div className="flex justify-between items-center bg-primary text-primary-foreground p-8 rounded-lg shadow-lg mb-8">
+          <div>
+            <h1 className="text-4xl font-bold">e-Szerződés</h1>
+            <p className="text-lg opacity-90 mt-2">Járműadásvételi szerződés és kiegészítő dokumentumok kitöltő és kezelő rendszer</p>
+          </div>
+          <ThemeSwitcher />
+        </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -68,7 +72,7 @@ export default function MainLayout() {
                   Sablonok újratöltése
                 </Button>
               </div>
-              <CardDescription>Az alkalmazás alapértelmezetten betölti a szükséges PDF sablonokat. Itt újratöltheti őket.</CardDescription>
+              <CardDescription>Az alkalmazás ellenőrzi a PDF sablonokat a szerverről. Itt újra ellenőrizheti őket.</CardDescription>
             </CardHeader>
           </Card>
           {pdfDocs ? (

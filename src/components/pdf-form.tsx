@@ -14,7 +14,7 @@ import { db } from "@/lib/firebase";
 import { addDoc, collection, getDocs, query, serverTimestamp } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
-import { fillAndDownloadAll, fillAndPrintSingle } from "@/lib/pdf-utils";
+import { generateAndHandlePdf } from "@/lib/pdf-utils";
 import { Download, Printer, Save, Trash2, Loader2 } from "lucide-react";
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
@@ -174,11 +174,14 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
     }
   };
 
-  const processPdfAction = async (action: () => Promise<void>) => {
+  const onPdfAction = async (pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all', action: 'download' | 'print') => {
     setIsProcessing(true);
+    toast({ title: "PDF generálása...", description: "Ez eltarthat egy ideig." });
     try {
-      await action();
+        await generateAndHandlePdf(form.getValues(), pdfType, action);
+        toast({ title: "PDF sikeresen legenerálva!", variant: "default" });
     } catch (error) {
+        console.error("PDF generation error:", error);
         toast({
             title: "Hiba a PDF feldolgozása közben",
             description: (error as Error).message,
@@ -189,10 +192,6 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
     }
   };
 
-  const onDownloadAll = () => processPdfAction(() => fillAndDownloadAll(form.getValues(), pdfDocs));
-  const onPrintMain = () => processPdfAction(() => fillAndPrintSingle(form.getValues(), pdfDocs, 'main'));
-  const onPrintWarranty = () => processPdfAction(() => fillAndPrintSingle(form.getValues(), pdfDocs, 'kellekszavatossag'));
-  const onPrintAuth = () => processPdfAction(() => fillAndPrintSingle(form.getValues(), pdfDocs, 'meghatalmazas'));
   
   return (
     <Form {...form}>
@@ -423,23 +422,23 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
         <Card>
             <CardHeader><CardTitle>Műveletek</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-4">
-                <Button type="button" onClick={onDownloadAll} disabled={isProcessing}>
+                <Button type="button" onClick={() => onPdfAction('all', 'download')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     Összes PDF letöltése
                 </Button>
-                <Button type="button" variant="secondary" onClick={onPrintMain} disabled={isProcessing}>
+                <Button type="button" variant="secondary" onClick={() => onPdfAction('main', 'print')} disabled={isProcessing || !pdfDocs.main}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Adásvételi Nyomtatása
                 </Button>
-                 <Button type="button" variant="secondary" onClick={onPrintWarranty} disabled={isProcessing}>
+                 <Button type="button" variant="secondary" onClick={() => onPdfAction('kellekszavatossag', 'print')} disabled={isProcessing || !pdfDocs.kellekszavatossag}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Kellékszavatossági Nyomtatása
                 </Button>
-                 <Button type="button" variant="secondary" onClick={onPrintAuth} disabled={isProcessing}>
+                 <Button type="button" variant="secondary" onClick={() => onPdfAction('meghatalmazas', 'print')} disabled={isProcessing || !pdfDocs.meghatalmazas}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Meghatalmazás Nyomtatása
                 </Button>
-                <Button type="button" variant="outline" onClick={() => form.reset()} disabled={isProcessing}>
+                <Button type="button" variant="outline" onClick={() => form.reset(getDefaultValues())} disabled={isProcessing}>
                     <Trash2 className="mr-2 h-4 w-4" />
                     Űrlap Törlése
                 </Button>

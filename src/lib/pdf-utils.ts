@@ -1,31 +1,11 @@
 'use client';
 import type { FormValues } from './definitions';
-import type { PDFDocument, PDFFont } from 'pdf-lib';
+import { generatePdf } from '@/ai/flows/generate-pdf-flow';
 
-const FONT_SIZE = 10;
-let fontBytes: ArrayBuffer | null = null;
-let pdfTemplateBytes = {
-    main: null as ArrayBuffer | null,
-    kellekszavatossag: null as ArrayBuffer | null,
-    meghatalmazas: null as ArrayBuffer | null,
-};
-
-async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
-    if (!fontBytes) {
-        const fontUrl = '/LiberationSans-Regular.ttf';
-        fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
-    }
-
-    if (!window.fontkit) {
-        throw new Error("Fontkit not available on window object.");
-    }
-    
-    pdfDoc.registerFontkit(window.fontkit);
-    
-    return pdfDoc.embedFont(fontBytes);
-}
 
 export const loadPdfTemplates = async () => {
+    // This function now just checks if the templates exist on the server by trying to fetch them.
+    // The actual files are loaded by the server-side Genkit flow.
     try {
         const [mainRes, kellekRes, meghatRes] = await Promise.all([
             fetch('/sablon.pdf'),
@@ -33,214 +13,71 @@ export const loadPdfTemplates = async () => {
             fetch('/meghatalmazas_okmanyiroda.pdf'),
         ]);
 
-        if (mainRes.ok) pdfTemplateBytes.main = await mainRes.arrayBuffer();
-        if (kellekRes.ok) pdfTemplateBytes.kellekszavatossag = await kellekRes.arrayBuffer();
-        if (meghatRes.ok) pdfTemplateBytes.meghatalmazas = await meghatRes.arrayBuffer();
-
+        return {
+            main: mainRes.ok ? true : null,
+            kellekszavatossag: kellekRes.ok ? true : null,
+            meghatalmazas: meghatRes.ok ? true : null,
+        };
     } catch (error) {
-        console.error("Error loading PDF templates:", error);
-        throw new Error("Hiba a PDF sablonok betöltése közben.");
-    }
-    
-    return {
-        main: pdfTemplateBytes.main ? true : null,
-        kellekszavatossag: pdfTemplateBytes.kellekszavatossag ? true : null,
-        meghatalmazas: pdfTemplateBytes.meghatalmazas ? true : null,
-    };
-};
-
-const fillFormField = (form: any, fieldName: string, value: string | undefined) => {
-    if (value) {
-        try {
-            const field = form.getTextField(fieldName);
-            field.setText(value);
-            field.setFontSize(FONT_SIZE);
-        } catch (e) {
-            console.warn(`Field "${fieldName}" not found in PDF.`);
-        }
+        console.error("Error checking PDF templates:", error);
+        return { main: null, kellekszavatossag: null, meghatalmazas: null };
     }
 };
 
-async function fillAndFlatten(templateBytes: ArrayBuffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void) {
-    if (!templateBytes) throw new Error("PDF sablon nincs betöltve.");
-    
-    const pdfDoc = await window.PDFLib.PDFDocument.load(templateBytes.slice(0));
-    const font = await getFont(pdfDoc);
-    const form = pdfDoc.getForm();
-
-    fillerFn(form, data);
-
-    form.getFields().forEach(field => {
-        try {
-           if (field.getName()) {
-               const tf = form.getTextField(field.getName());
-               tf.updateAppearances(font);
-           }
-        } catch (e) {
-            // Not a text field, ignore
-        }
-    });
-
-    form.flatten();
-    return pdfDoc.save();
-}
-
-
-function fillMainPdfForm(form: any, data: FormValues) {
-    fillFormField(form, 'rendszam', data.rendszam);
-    fillFormField(form, 'alvazszam', data.alvazszam);
-    fillFormField(form, 'motorszam', data.motorszam);
-    fillFormField(form, 'km_allas', data.km_allas);
-    fillFormField(form, 'torzskonyv_szam', data.torzskonyv_szam);
-    fillFormField(form, 'forgalmi_szam', data.forgalmi_szam);
-    fillFormField(form, 'gyartmany_tipus', data.gyartmany_tipus);
-    fillFormField(form, 'km_idopont', data.km_idopont);
-
-    fillFormField(form, 'ceg_neve', data.ceg_neve);
-    fillFormField(form, 'ceg_kepviselo', data.ceg_kepviselo);
-    fillFormField(form, 'cegjegyzekszam', data.cegjegyzekszam);
-    fillFormField(form, 'ceg_szekhely', data.szekhely);
-
-    fillFormField(form, 'vevo_nev', data.vevo_nev);
-    fillFormField(form, 'vevo_szul_hely_ido', data.vevo_szul_hely_ido);
-    fillFormField(form, 'vevo_anyja_neve', data.vevo_anyja_neve);
-    fillFormField(form, 'vevo_okmany_szam', data.vevo_okmany_szam);
-    fillFormField(form, 'vevo_lakcim', data.vevo_lakcim);
-
-    fillFormField(form, 'atadas_ev', data.atadas_ev);
-    fillFormField(form, 'atadas_ho', data.atadas_ho);
-    fillFormField(form, 'atadas_nap', data.atadas_nap);
-    fillFormField(form, 'hataly_ev', data.hataly_ev);
-    fillFormField(form, 'hataly_ho', data.hataly_ho);
-    fillFormField(form, 'hataly_nap', data.hataly_nap);
-    fillFormField(form, 'birtok_ev', data.birtok_ev);
-    fillFormField(form, 'birtok_ho', data.birtok_ho);
-    fillFormField(form, 'birtok_nap', data.birtok_nap);
-    fillFormField(form, 'birtok_ora', data.birtok_ora);
-    fillFormField(form, 'birtok_perc', data.birtok_perc);
-    fillFormField(form, 'szerzodes_ev', data.szerzodes_ev);
-    fillFormField(form, 'szerzodes_ho', data.szerzodes_ho);
-    fillFormField(form, 'szerrzodes_nap', data.szerrzodes_nap);
-
-    fillFormField(form, 'tanu1_nev', data.tanu1_nev);
-    fillFormField(form, 'tanu1_lakcim', data.tanu1_lakcim);
-    fillFormField(form, 'tanu1_szig', data.tanu1_szig);
-    fillFormField(form, 'tanu2_nev', data.tanu2_nev);
-    fillFormField(form, 'tanu2_lakcim', data.tanu2_lakcim);
-    fillFormField(form, 'tanu2_szig', data.tanu2_szig);
-
-    fillFormField(form, 'vetelar_szam', data.vetelar_szam);
-    fillFormField(form, 'vetelar_betukkel', data.vetelar_betukkel);
-
-    let fizetesiMod = data.fizetesi_mod;
-    if (fizetesiMod === 'egyéb') {
-        fizetesiMod = data.egyeb_fizetesi_mod;
+function handlePdfData(pdfData: string, action: 'download' | 'print', filename: string) {
+    const byteCharacters = atob(pdfData);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    fillFormField(form, 'fizetesi_mod', fizetesiMod);
-    fillFormField(form, 'fizetesi_datum', data.fizetesi_datum);
-}
-
-function fillWarrantyPdfForm(form: any, data: FormValues) {
-    const today = new Date();
-    const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
-    const formattedDateForPdfText = `${today.getFullYear()}. ${monthNames[today.getMonth()]} ${today.getDate()}.`;
-
-    fillFormField(form, 'kell_rendszam', data.alvazszam);
-    fillFormField(form, 'kell_tovabbi_info', data.kell_tovabbi_info);
-    fillFormField(form, 'kell_datum', formattedDateForPdfText);
-}
-
-function fillAuthPdfForm(form: any, data: FormValues) {
-    fillFormField(form, 'meghatalmazo_nev_megh', data.vevo_nev);
-    fillFormField(form, 'meghatalmazo_lakcim_megh', data.vevo_lakcim);
-    fillFormField(form, 'meghatalmazo_szig_szam_megh', data.vevo_okmany_szam);
-    fillFormField(form, 'meghatalmazo_anyja_neve_megh', data.vevo_anyja_neve);
-    fillFormField(form, 'meghatalmazo_szul_hely_ido_megh', data.vevo_szul_hely_ido);
-    fillFormField(form, 'meghatalmazott_nev_cim_megh', data.meghatalmazott_adatok);
-    fillFormField(form, 'meghatalmazas_rendszam_megh', data.rendszam);
-    fillFormField(form, 'meghatalmazas_gyartmany_megh', data.gyartmany_tipus);
-    fillFormField(form, 'meghatalmazas_alvazszam_megh', data.alvazszam);
-    fillFormField(form, 'meghatalmazas_datum_ev', data.szerzodes_ev);
-    fillFormField(form, 'meghatalmazas_datum_ho', data.szerzodes_ho);
-    fillFormField(form, 'meghatalmazas_datum_nap', data.szerrzodes_nap);
-    fillFormField(form, 'tanu1_nev_megh', data.tanu1_nev);
-    fillFormField(form, 'tanu1_lakcim_megh', data.tanu1_lakcim);
-    fillFormField(form, 'tanu2_nev_megh', data.tanu2_nev);
-    fillFormField(form, 'tanu2_lakcim_megh', data.tanu2_lakcim);
-}
-
-
-function downloadPdf(pdfBytes: Uint8Array, filename: string) {
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-}
-
-const getFilenameBase = (data: FormValues) => {
-    const rendszam = data.rendszam?.replace(/[^a-zA-Z0-9-]/g, '_') || 'rendszam';
-    const alvazszam = data.alvazszam?.replace(/[^a-zA-Z0-9-]/g, '_') || 'alvazszam';
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    return `${rendszam}-${alvazszam}-${dateStr}`;
-};
-
-export async function fillAndDownloadAll(data: FormValues, pdfDocs: any) {
-    if (!pdfTemplateBytes.main || !pdfTemplateBytes.kellekszavatossag || !pdfTemplateBytes.meghatalmazas) {
-        throw new Error("Nem minden PDF sablon van betöltve.");
-    }
-    const filenameBase = getFilenameBase(data);
-
-    const mainPdfBytes = await fillAndFlatten(pdfTemplateBytes.main, data, fillMainPdfForm);
-    downloadPdf(mainPdfBytes, `${filenameBase}-adasveteli.pdf`);
-
-    const warrantyPdfBytes = await fillAndFlatten(pdfTemplateBytes.kellekszavatossag, data, fillWarrantyPdfForm);
-    downloadPdf(warrantyPdfBytes, `${filenameBase}-kellekszavatossagi.pdf`);
-    
-    const authPdfBytes = await fillAndFlatten(pdfTemplateBytes.meghatalmazas, data, fillAuthPdfForm);
-    downloadPdf(authPdfBytes, `${filenameBase}-meghatalmazas.pdf`);
-}
-
-export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: 'main' | 'kellekszavatossag' | 'meghatalmazas') {
-     if (!pdfTemplateBytes[type]) {
-        throw new Error(`${type} PDF sablon nincs betöltve.`);
-    }
-    
-    let pdfBytes;
-    if (type === 'main') {
-        if (!pdfTemplateBytes.main) throw new Error("Fő PDF sablon nincs betöltve.");
-        pdfBytes = await fillAndFlatten(pdfTemplateBytes.main, data, fillMainPdfForm);
-    } else if (type === 'kellekszavatossag') {
-        if (!pdfTemplateBytes.kellekszavatossag) throw new Error("Kellékszavatossági PDF sablon nincs betöltve.");
-        pdfBytes = await fillAndFlatten(pdfTemplateBytes.kellekszavatossag, data, fillWarrantyPdfForm);
-    } else {
-        if (!pdfTemplateBytes.meghatalmazas) throw new Error("Meghatalmazás PDF sablon nincs betöltve.");
-        pdfBytes = await fillAndFlatten(pdfTemplateBytes.meghatalmazas, data, fillAuthPdfForm);
-    }
-
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
+
+    if (action === 'download') {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } else if (action === 'print') {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url;
+        document.body.appendChild(iframe);
+        
+        iframe.onload = () => {
+            try {
+                setTimeout(() => {
+                    if (iframe.contentWindow) {
+                        iframe.contentWindow.print();
+                    }
+                }, 100);
+            } finally {
+                setTimeout(() => {
+                    document.body.removeChild(iframe);
+                    URL.revokeObjectURL(url);
+                }, 200);
+            }
+        };
+    }
+}
+
+
+export async function generateAndHandlePdf(
+    formData: FormValues, 
+    pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all',
+    action: 'download' | 'print'
+) {
+    const result = await generatePdf({ formData, pdfType });
     
-    iframe.onload = () => {
-        try {
-            setTimeout(() => {
-                if (iframe.contentWindow) {
-                    iframe.contentWindow.print();
-                }
-            }, 100);
-        } finally {
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-                URL.revokeObjectURL(url);
-            }, 200);
-        }
-    };
+    if (!result || !result.pdfs || result.pdfs.length === 0) {
+        throw new Error("PDF generation failed on the server.");
+    }
+    
+    result.pdfs.forEach(pdf => {
+        handlePdfData(pdf.data, action, pdf.filename);
+    });
 }
