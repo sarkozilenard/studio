@@ -10,6 +10,23 @@ let pdfTemplateBytes = {
     meghatalmazas: null as ArrayBuffer | null,
 };
 
+let fontkitPromise: Promise<void> | null = null;
+
+const loadFontkit = (): Promise<void> => {
+    if (!fontkitPromise) {
+        fontkitPromise = new Promise((resolve, reject) => {
+            if (window.fontkit) {
+                return resolve();
+            }
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load fontkit.'));
+            document.head.appendChild(script);
+        });
+    }
+    return fontkitPromise;
+};
 
 async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
     if (!fontBytes) {
@@ -17,8 +34,9 @@ async function getFont(pdfDoc: PDFDocument): Promise<PDFFont> {
         fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
     }
 
+    await loadFontkit();
     if (!window.fontkit) {
-        throw new Error("Fontkit not loaded. Please check the script tag in layout.tsx");
+        throw new Error("Fontkit not available on window object even after loading.");
     }
     
     pdfDoc.registerFontkit(window.fontkit);
@@ -43,8 +61,6 @@ export const loadPdfTemplates = async () => {
         throw new Error("Hiba a PDF sablonok betöltése közben.");
     }
     
-    // Return a dummy object so the UI knows loading is complete.
-    // The actual template bytes are stored in the module-level variable.
     return {
         main: pdfTemplateBytes.main ? true : null,
         kellekszavatossag: pdfTemplateBytes.kellekszavatossag ? true : null,
@@ -68,7 +84,6 @@ async function fillMainPdf(data: FormValues) {
     const form = pdfDoc.getForm();
     const font = await getFont(pdfDoc);
     
-    // Fill fields
     fillFormField(form, 'rendszam', data.rendszam);
     fillFormField(form, 'alvazszam', data.alvazszam);
     fillFormField(form, 'motorszam', data.motorszam);
@@ -255,9 +270,10 @@ export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: '
         try {
             iframe.contentWindow?.print();
         } finally {
-            // Clean up the iframe and URL object
             document.body.removeChild(iframe);
             URL.revokeObjectURL(url);
         }
     };
 }
+
+    
