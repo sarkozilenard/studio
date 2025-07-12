@@ -25,7 +25,7 @@ let fontBytes: ArrayBuffer | null = null;
 
 async function loadAssets() {
     if (!fontBytes) {
-        // Fetch a font that supports Hungarian characters
+        // Fetch a font that supports Hungarian characters from a stable URL
         const fontUrl = 'https://github.com/google/fonts/raw/main/ofl/notosans/NotoSans-Regular.ttf';
         const response = await fetch(fontUrl);
         if (!response.ok) {
