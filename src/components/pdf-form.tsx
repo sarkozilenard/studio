@@ -392,7 +392,7 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
                 <FormField control={form.control} name="vetelar_betukkel" render={({ field }) => (
                     <FormItem>
                         <FormLabel>Vételár (betűkkel):</FormLabel>
-                        <FormControl><Input {...field} readOnly /></FormControl>
+                        <FormControl><Input {...field} /></FormControl>
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="fizetesi_mod" render={({ field }) => (
