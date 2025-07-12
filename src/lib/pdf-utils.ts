@@ -1,6 +1,7 @@
 'use client';
 import type { FormValues } from './definitions';
 import { generatePdf } from '@/ai/flows/generate-pdf-flow';
+import type { GeneratePdfOutput } from './definitions';
 
 
 export const loadPdfTemplates = async () => {
@@ -71,7 +72,7 @@ export async function generateAndHandlePdf(
     pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all',
     action: 'download' | 'print'
 ) {
-    const result = await generatePdf({ formData, pdfType });
+    const result: GeneratePdfOutput = await generatePdf({ formData, pdfType });
     
     if (!result || !result.pdfs || result.pdfs.length === 0) {
         throw new Error("PDF generation failed on the server.");

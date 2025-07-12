@@ -78,3 +78,18 @@ export type Witness = {
   idNumber: string;
   timestamp?: any;
 };
+
+// Schemas for generatePdf flow
+export const GeneratePdfInputSchema = z.object({
+  formData: FormSchema.describe('The form data object.'),
+  pdfType: z.enum(['main', 'kellekszavatossag', 'meghatalmazas', 'all']).describe('The type of PDF to generate.'),
+});
+export type GeneratePdfInput = z.infer<typeof GeneratePdfInputSchema>;
+
+export const GeneratePdfOutputSchema = z.object({
+  pdfs: z.array(z.object({
+    filename: z.string(),
+    data: z.string().describe('Base64 encoded PDF data.'),
+  })),
+});
+export type GeneratePdfOutput = z.infer<typeof GeneratePdfOutputSchema>;

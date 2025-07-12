@@ -3,8 +3,6 @@
  * @fileOverview A server-side PDF generation flow.
  *
  * - generatePdf - A function that handles filling PDF templates.
- * - GeneratePdfInput - The input type for the generatePdf function.
- * - GeneratePdfOutput - The return type for the generatePdf function.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
@@ -12,22 +10,8 @@ import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import fs from 'fs/promises';
 import path from 'path';
-import type { FormValues } from '@/lib/definitions';
-
-// Schemas
-export const GeneratePdfInputSchema = z.object({
-  formData: z.any().describe('The form data object.'),
-  pdfType: z.enum(['main', 'kellekszavatossag', 'meghatalmazas', 'all']).describe('The type of PDF to generate.'),
-});
-export type GeneratePdfInput = z.infer<typeof GeneratePdfInputSchema>;
-
-export const GeneratePdfOutputSchema = z.object({
-  pdfs: z.array(z.object({
-    filename: z.string(),
-    data: z.string().describe('Base64 encoded PDF data.'),
-  })),
-});
-export type GeneratePdfOutput = z.infer<typeof GeneratePdfOutputSchema>;
+import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
+import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 
 
 // Helper functions (adapted from pdf-utils)
