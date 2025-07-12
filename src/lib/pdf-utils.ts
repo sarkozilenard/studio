@@ -218,7 +218,6 @@ export async function fillAndDownloadAll(data: FormValues, pdfDocs: any) {
 
     // Reset the font for each new PDF generation process
     customFont = null;
-
     const mainPdfBytes = await fillMainPdf(await window.PDFLib.PDFDocument.load(await pdfDocs.main.save()), data);
     downloadPdf(mainPdfBytes, `${filenameBase}-adasveteli.pdf`);
 
@@ -258,6 +257,12 @@ export async function fillAndPrintSingle(data: FormValues, pdfDocs: any, type: '
     document.body.appendChild(iframe);
     
     iframe.onload = () => {
-        iframe.contentWindow?.print();
+        try {
+            iframe.contentWindow?.print();
+        } finally {
+            // Clean up the iframe and URL object
+            document.body.removeChild(iframe);
+            URL.revokeObjectURL(url);
+        }
     };
 }

@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { loadPdfTemplates } from "@/lib/pdf-utils";
 import type { PDFDocument } from 'pdf-lib';
 import { Loader2 } from "lucide-react";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type PdfDocs = {
   main: PDFDocument | null;
