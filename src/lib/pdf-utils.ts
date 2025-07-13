@@ -47,22 +47,20 @@ function handlePdfData(pdfData: string, action: 'download' | 'print', filename: 
         const iframe = document.createElement('iframe');
         iframe.style.display = 'none';
         iframe.src = url;
-        document.body.appendChild(iframe);
         
         iframe.onload = () => {
-            try {
-                setTimeout(() => {
-                    if (iframe.contentWindow) {
-                        iframe.contentWindow.print();
-                    }
-                }, 100);
-            } finally {
-                setTimeout(() => {
-                    document.body.removeChild(iframe);
-                    URL.revokeObjectURL(url);
-                }, 200);
-            }
+            // The iframe's contentWindow will trigger the print dialog itself.
+            // This avoids cross-origin security errors.
+            iframe.contentWindow?.print();
+            
+            // Clean up after a short delay
+            setTimeout(() => {
+                document.body.removeChild(iframe);
+                URL.revokeObjectURL(url);
+            }, 200);
         };
+        
+        document.body.appendChild(iframe);
     }
 }
 
