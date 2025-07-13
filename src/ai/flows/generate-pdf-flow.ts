@@ -58,7 +58,6 @@ async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fille
         }
     });
 
-    form.flatten();
     return pdfDoc.save();
 }
 
