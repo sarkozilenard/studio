@@ -1,8 +1,6 @@
 'use client';
 import type { FormValues } from './definitions';
 import { generatePdf } from '@/ai/flows/generate-pdf-flow';
-import { storage } from './firebase';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 
 /**
  * Converts a Base64 string to a Blob.
@@ -27,10 +25,10 @@ function base64ToBlob(base64: string, contentType: string = 'application/pdf'): 
 
 
 /**
- * Calls the server to generate a PDF, then uploads it to Firebase Storage from the client,
- * and finally opens the public URL in a new browser tab.
+ * Calls the server to generate a PDF, then opens it in a new tab using a blob URL.
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
+ * @param action The action to perform: 'open' or 'download'.
  */
 export async function generateAndHandlePdf(
     formData: FormValues, 
@@ -44,21 +42,18 @@ export async function generateAndHandlePdf(
             throw new Error("A PDF generálása a szerveren sikertelen volt, vagy hiányos adatot adott vissza.");
         }
 
-        // Step 2: Upload the PDF from the client to Firebase Storage.
-        const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
-        // We upload as a base64 string, which is efficient.
-        const snapshot = await uploadString(storageRef, result.pdfBase64, 'base64', {
-            contentType: 'application/pdf'
-        });
-
-        // Step 3: Get the public download URL.
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        // Step 4: Open the public URL from Firebase Storage in a new tab.
-        const newWindow = window.open(downloadURL, '_blank');
+        // Step 2: Convert base64 to blob and create a blob URL
+        const blob = base64ToBlob(result.pdfBase64);
+        const url = URL.createObjectURL(blob);
+        
+        // Step 3: Open the blob URL in a new tab.
+        const newWindow = window.open(url, '_blank');
         if (!newWindow) {
             throw new Error("A böngésző letiltotta a felugró ablakot. Kérjük, engedélyezze a felugró ablakokat ezen az oldalon.");
         }
+        // It's good practice to release the object URL when it's no longer needed.
+        // The browser will handle this when the new tab is closed, but this is cleaner.
+        newWindow.addEventListener('beforeunload', () => URL.revokeObjectURL(url));
 
     } catch (error: any) {
         console.error("Hiba a PDF feldolgozása közben:", error);

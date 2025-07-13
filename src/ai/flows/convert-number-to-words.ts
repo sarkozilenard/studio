@@ -60,9 +60,18 @@ const convertNumberToWordsFlow = ai.defineFlow(
     outputSchema: ConvertNumberToWordsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input, {
-        model: googleAI.model('gemini-1.5-flash-latest'),
-      });
-    return output!;
+    try {
+        const {output} = await prompt(input, {
+            model: googleAI.model('gemini-1.5-flash-latest'),
+        });
+        if (!output) {
+          throw new Error('AI model returned empty output.');
+        }
+        return output;
+    } catch (error) {
+        console.error('Error in convertNumberToWordsFlow:', error);
+        // Return a safe fallback or re-throw a more specific error
+        return { words: 'HIBA AZ ÁTÍRÁS SORÁN' };
+    }
   }
 );
