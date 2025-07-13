@@ -47,30 +47,9 @@ function base64ToBlob(base64Data: string, contentType = 'application/pdf'): Blob
     return new Blob(byteArrays, { type: contentType });
 }
 
-/**
- * Creates an iframe with the PDF and triggers the print dialog.
- * @param blob The PDF blob to print.
- */
-function printBlob(blob: Blob) {
-    const url = URL.createObjectURL(blob);
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = url;
-    document.body.appendChild(iframe);
-
-    iframe.onload = () => {
-        setTimeout(() => {
-            if (iframe.contentWindow) {
-                iframe.contentWindow.focus();
-                iframe.contentWindow.print();
-            }
-        }, 1); // A minimal timeout can help ensure the print dialog opens reliably.
-    };
-}
-
 
 /**
- * Generates a PDF on the server, and handles the user action (print/download).
+ * Generates a PDF, uploads it to Firebase Storage, and then handles the user action (print/download).
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
  * @param action The action to perform ('download' or 'print').
@@ -81,31 +60,33 @@ export async function generateAndHandlePdf(
     action: 'download' | 'print'
 ) {
     try {
-        // 1. Generate PDF on the server and get the Base64 data
+        // Step 1: Generate PDF on the server to get Base64 data and filename.
         const result: GeneratePdfOutput = await generatePdf({ formData, pdfType });
         
         if (!result || !result.base64Data) {
             throw new Error("PDF generation failed on the server.");
         }
 
-        // 2. Convert Base64 to Blob
+        // Step 2: Convert Base64 to a Blob.
         const pdfBlob = base64ToBlob(result.base64Data);
 
-        // 3. Handle action
+        // Step 3: Upload the Blob to Firebase Storage.
+        const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
+        await uploadBytes(storageRef, pdfBlob);
+
+        // Step 4: Get the permanent download URL.
+        const downloadURL = await getDownloadURL(storageRef);
+
+        // Step 5: Handle the final action based on the URL.
         if (action === 'print') {
-            // For printing, use a blob URL directly for speed.
-            printBlob(pdfBlob);
+            // Open the stored PDF in a new tab. The browser's PDF viewer will have a print button.
+            window.open(downloadURL, '_blank');
         } else if (action === 'download') {
-            // For downloading, upload to Firebase for a persistent URL.
-            const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
-            await uploadBytes(storageRef, pdfBlob);
-
-            const downloadURL = await getDownloadURL(storageRef);
-
+            // Create a link to trigger the download.
             const link = document.createElement('a');
             link.href = downloadURL;
-            link.target = '_blank'; // Open in new tab which may trigger download or display
-            link.download = result.filename; // This is a hint for the browser
+            link.target = '_blank'; // Opening in a new tab can help with browser compatibility.
+            link.download = result.filename; // This is a hint for the browser.
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -113,8 +94,8 @@ export async function generateAndHandlePdf(
 
     } catch (error: any) {
         console.error("Error in generateAndHandlePdf:", error);
-         // Check for CORS or permission errors specifically
-        if (error.code === 'storage/unauthorized' || error.code === 'storage/object-not-found' || (error.message && error.message.includes('CORS'))) {
+         // Check for CORS or permission errors specifically.
+        if (error.code === 'storage/unauthorized' || error.message.includes('CORS')) {
              throw new Error(
                 "PDF Upload Failed: This is likely a permissions or CORS issue with Firebase Storage. " +
                 "Please check your Firebase Storage security rules and CORS configuration in the Google Cloud console. " +
