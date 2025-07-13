@@ -27,14 +27,9 @@ export const loadPdfTemplates = async () => {
 
 function handlePdfUrl(url: string, action: 'download' | 'print') {
     if (action === 'download') {
-        // For downloads, we can just open the URL. The browser will handle it.
-        // For a more direct download experience, a link with a download attribute is better.
         const link = document.createElement('a');
         link.href = url;
-        link.target = '_blank'; // Open in a new tab to avoid navigating away
-        // The 'download' attribute is less reliable with cross-origin URLs, 
-        // but opening in a new tab is a solid fallback.
-        // link.download = filename; 
+        link.target = '_blank';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -43,13 +38,18 @@ function handlePdfUrl(url: string, action: 'download' | 'print') {
         const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
         if (printWindow) {
              printWindow.onload = () => {
-                // A timeout is often necessary to ensure the PDF viewer has fully loaded the document
                 setTimeout(() => {
-                    printWindow.print();
-                }, 500); 
+                    try {
+                        printWindow.print();
+                    } catch (e) {
+                        console.error("Print failed:", e);
+                        // Optional: Close the window if printing fails, or show a message.
+                        // printWindow.close(); 
+                    }
+                }, 1000); // Increased timeout for slower connections
             };
         } else {
-            alert("Kérjük, engedélyezze a felugró ablakokat a nyomtatáshoz.");
+            throw new Error("Kérjük, engedélyezze a felugró ablakokat a nyomtatáshoz.");
         }
     }
 }
@@ -60,13 +60,25 @@ export async function generateAndHandlePdf(
     pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all',
     action: 'download' | 'print'
 ) {
-    const result: GeneratePdfOutput = await generatePdf({ formData, pdfType });
-    
-    if (!result || !result.pdfs || result.pdfs.length === 0) {
-        throw new Error("PDF generation failed on the server.");
+    try {
+        const result: GeneratePdfOutput = await generatePdf({ formData, pdfType });
+        
+        if (!result || !result.pdfs || result.pdfs.length === 0) {
+            throw new Error("PDF generation failed on the server.");
+        }
+        
+        result.pdfs.forEach(pdf => {
+            handlePdfUrl(pdf.url, action);
+        });
+    } catch (error: any) {
+        // Improved error handling to give a specific, actionable message for the likely cause.
+        if (error.message && (error.message.includes('storage/unknown') || error.message.includes('404'))) {
+             throw new Error(
+                "PDF Upload Failed (404): This is likely a permissions issue. " +
+                "Please go to the Google Cloud IAM page for your project and ensure the service account for your App Hosting backend has the 'Storage Object Admin' role. " +
+                "Original error: " + error.message
+            );
+        }
+        throw error; // Re-throw other errors
     }
-    
-    result.pdfs.forEach(pdf => {
-        handlePdfUrl(pdf.url, action);
-    });
 }
