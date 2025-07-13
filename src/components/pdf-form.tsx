@@ -203,10 +203,10 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
             <FormField control={form.control} name="rendszam" render={({ field }) => (<FormItem><FormLabel>Rendszám:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="alvazszam" render={({ field }) => (<FormItem><FormLabel>Alvázszám:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="motorszam" render={({ field }) => (<FormItem><FormLabel>Motorszám:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
+            <FormField control={form.control} name="gyartmany_tipus" render={({ field }) => (<FormItem><FormLabel>Gyártmány/típus:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="km_allas" render={({ field }) => (<FormItem><FormLabel>Km állás:</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="torzskonyv_szam" render={({ field }) => (<FormItem><FormLabel>Törzskönyv szám:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="forgalmi_szam" render={({ field }) => (<FormItem><FormLabel>Forgalmi szám:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
-            <FormField control={form.control} name="gyartmany_tipus" render={({ field }) => (<FormItem><FormLabel>Gyártmány/típus:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
             <FormField control={form.control} name="km_idopont" render={({ field }) => (<FormItem><FormLabel>Km állásfelvétel időpontja:</FormLabel><FormControl><Input type="date" {...field} /></FormControl></FormItem>)} />
           </CardContent>
         </Card>
