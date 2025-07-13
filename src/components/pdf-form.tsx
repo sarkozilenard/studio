@@ -168,14 +168,13 @@ export default function PdfForm() {
 
   const onPdfAction = async (pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all') => {
     setIsProcessing(true);
-    toast({ title: "PDF generálása...", description: "Ez eltarthat egy ideig." });
+    toast({ title: "PDF generálása nyomtatáshoz...", description: "Ez eltarthat egy pillanatig." });
     try {
         await generateAndHandlePdf(form.getValues(), pdfType);
-        toast({ title: "PDF letöltés elindítva!", variant: "default" });
     } catch (error) {
-        console.error("PDF generation error:", error);
+        console.error("PDF generation/printing error:", error);
         toast({
-            title: "Hiba a PDF feldolgozása közben",
+            title: "Hiba a PDF nyomtatása közben",
             description: (error as Error).message,
             variant: "destructive"
         });
@@ -415,20 +414,20 @@ export default function PdfForm() {
             <CardHeader><CardTitle>Műveletek</CardTitle></CardHeader>
             <CardContent className="flex flex-wrap gap-4">
                 <Button type="button" onClick={() => onPdfAction('all')} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Összes PDF letöltése
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                    Összes PDF nyomtatása
                 </Button>
                 <Button type="button" variant="secondary" onClick={() => onPdfAction('main')} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Adásvételi letöltése
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                    Adásvételi nyomtatása
                 </Button>
                  <Button type="button" variant="secondary" onClick={() => onPdfAction('kellekszavatossag')} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Kellékszavatossági letöltése
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                    Kellékszavatossági nyomtatása
                 </Button>
                  <Button type="button" variant="secondary" onClick={() => onPdfAction('meghatalmazas')} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Meghatalmazás letöltése
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                    Meghatalmazás nyomtatása
                 </Button>
                 <Button type="button" variant="outline" onClick={() => form.reset(getDefaultValues())} disabled={isProcessing}>
                     <Trash2 className="mr-2 h-4 w-4" />

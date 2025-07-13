@@ -2,62 +2,50 @@
 import type { FormValues } from './definitions';
 import { generatePdf } from '@/ai/flows/generate-pdf-flow';
 
-/**
- * Converts a Base64 string to a Blob.
- * @param base64 The Base64 string.
- * @param contentType The content type of the Blob.
- * @returns A Blob object.
- */
-function base64ToBlob(base64: string, contentType: string = 'application/pdf'): Blob {
-    const byteCharacters = atob(base64);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-        const slice = byteCharacters.slice(offset, offset + 512);
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-    }
-    return new Blob(byteArrays, { type: contentType });
-}
+// This declares the printJS function globally for TypeScript
+declare const printJS: (params: {
+    printable: string;
+    type: 'pdf';
+    base64?: boolean;
+    showModal?: boolean;
+    modalMessage?: string;
+}) => void;
 
 
 /**
- * Calls the server to generate a PDF, then opens it in a new tab using a blob URL.
+ * Calls the server to generate a PDF, then uses Print.js to open the print dialog.
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
- * @param action The action to perform: 'open' or 'download'.
  */
 export async function generateAndHandlePdf(
-    formData: FormValues, 
+    formData: FormValues,
     pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all'
 ) {
+    if (typeof printJS === 'undefined') {
+        throw new Error('Print.js library is not loaded. Please check the script tags.');
+    }
+
     try {
-        // Step 1: Call the server flow to get the generated PDF data.
+        // Step 1: Call the server flow to get the generated PDF data as a base64 string.
         const result = await generatePdf({ formData, pdfType });
         
-        if (!result || !result.pdfBase64 || !result.filename) {
-            throw new Error("A PDF generálása a szerveren sikertelen volt, vagy hiányos adatot adott vissza.");
+        if (!result || !result.pdfBase64) {
+            throw new Error("A PDF generálása a szerveren sikertelen volt, vagy üres adatot adott vissza.");
         }
 
-        // Step 2: Convert base64 to blob and create a blob URL
-        const blob = base64ToBlob(result.pdfBase64);
-        const url = URL.createObjectURL(blob);
-        
-        // Step 3: Open the blob URL in a new tab.
-        const newWindow = window.open(url, '_blank');
-        if (!newWindow) {
-            throw new Error("A böngésző letiltotta a felugró ablakot. Kérjük, engedélyezze a felugró ablakokat ezen az oldalon.");
-        }
-        // It's good practice to release the object URL when it's no longer needed.
-        // The browser will handle this when the new tab is closed, but this is cleaner.
-        newWindow.addEventListener('beforeunload', () => URL.revokeObjectURL(url));
+        // Step 2: Call Print.js with the base64 data.
+        // It handles the conversion and opens the print dialog.
+        printJS({
+            printable: result.pdfBase64,
+            type: 'pdf',
+            base64: true,
+            showModal: true,
+            modalMessage: 'Dokumentum előkészítése nyomtatásra...'
+        });
 
     } catch (error: any) {
         console.error("Hiba a PDF feldolgozása közben:", error);
         // Re-throw the error to be caught by the form's error handler.
-        throw error; 
+        throw error;
     }
 }
