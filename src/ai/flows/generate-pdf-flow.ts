@@ -47,7 +47,7 @@ async function loadAssetAsBuffer(url: string): Promise<Buffer> {
 
 async function loadAssets() {
     if (!fontBytes) {
-        fontBytes = await loadAssetAsBuffer('/fonts/DejaVuSans.ttf');
+        fontBytes = await loadAssetAsBuffer('https://pdf.pomazauto.hu/fonts/DejaVuSans.ttf');
     }
     if (!pdfTemplateBytes.main) {
         pdfTemplateBytes.main = await loadAssetAsBuffer('/sablon.pdf');
