@@ -19,14 +19,6 @@ import { Download, Printer, Save, Trash2, Loader2 } from "lucide-react";
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
 
-type PdfFormProps = {
-  pdfDocs: {
-    main: boolean | null;
-    kellekszavatossag: boolean | null;
-    meghatalmazas: boolean | null;
-  }
-}
-
 const getDefaultValues = () => {
     const today = new Date();
     const year = today.getFullYear().toString();
@@ -53,7 +45,7 @@ const getDefaultValues = () => {
     };
 };
 
-export default function PdfForm({ pdfDocs }: PdfFormProps) {
+export default function PdfForm() {
   const { toast } = useToast();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [witnesses, setWitnesses] = useState<Witness[]>([]);
@@ -426,15 +418,15 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                     Összes PDF letöltése
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => onPdfAction('main', 'print')} disabled={isProcessing || !pdfDocs.main}>
+                <Button type="button" variant="secondary" onClick={() => onPdfAction('main', 'print')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Adásvételi Nyomtatása
                 </Button>
-                 <Button type="button" variant="secondary" onClick={() => onPdfAction('kellekszavatossag', 'print')} disabled={isProcessing || !pdfDocs.kellekszavatossag}>
+                 <Button type="button" variant="secondary" onClick={() => onPdfAction('kellekszavatossag', 'print')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Kellékszavatossági Nyomtatása
                 </Button>
-                 <Button type="button" variant="secondary" onClick={() => onPdfAction('meghatalmazas', 'print')} disabled={isProcessing || !pdfDocs.meghatalmazas}>
+                 <Button type="button" variant="secondary" onClick={() => onPdfAction('meghatalmazas', 'print')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Meghatalmazás Nyomtatása
                 </Button>

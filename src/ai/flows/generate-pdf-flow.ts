@@ -1,15 +1,17 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation flow.
+ * @fileOverview A server-side PDF generation and upload flow.
  *
- * - generatePdf - A function that handles filling PDF templates and returns the PDF data.
+ * - generatePdf - A function that handles filling PDF templates, uploading to Firebase Storage, and returning the public URL.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { PDFDocument } from 'pdf-lib';
-import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
+import type { FormValues, GeneratePdfInput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import fontkit from '@pdf-lib/fontkit';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Helper functions
 const FONT_SIZE = 12;
@@ -174,7 +176,6 @@ const generatePdfFlow = ai.defineFlow(
     outputSchema: GeneratePdfOutputSchema,
   },
   async ({ formData, pdfType }) => {
-    // Always load assets on every run for reliability
     const fontBytes = await loadAssetAsBuffer(`${BASE_URL}/fonts/DejaVuSans.ttf`);
 
     const templates = {
@@ -212,20 +213,22 @@ const generatePdfFlow = ai.defineFlow(
         ? await mergePdfs(generatedPdfBytesArray)
         : generatedPdfBytesArray[0];
 
-    const base64Pdf = Buffer.from(finalPdfBytes).toString('base64');
-    
     let filename = `${filenameBase}.pdf`;
     if (pdfType !== 'all') {
         filename = `${filenameBase}-${pdfType}.pdf`;
     }
+
+    // Upload to Firebase Storage
+    const storageRef = ref(storage, `generated-pdfs/${filename}`);
+    const snapshot = await uploadBytes(storageRef, finalPdfBytes, { contentType: 'application/pdf' });
+    const downloadURL = await getDownloadURL(snapshot.ref);
     
     return {
-      filename: filename,
-      base64Data: base64Pdf,
+      pdfUrl: downloadURL
     };
   }
 );
 
-export async function generatePdf(input: GeneratePdfInput): Promise<GeneratePdfOutput> {
+export async function generatePdf(input: GeneratePdfInput) {
   return generatePdfFlow(input);
 }

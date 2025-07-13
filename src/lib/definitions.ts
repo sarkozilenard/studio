@@ -87,7 +87,6 @@ export const GeneratePdfInputSchema = z.object({
 export type GeneratePdfInput = z.infer<typeof GeneratePdfInputSchema>;
 
 export const GeneratePdfOutputSchema = z.object({
-    filename: z.string().describe('The suggested filename for the PDF.'),
-    base64Data: z.string().describe('The generated PDF file encoded as a Base64 string.'),
+    pdfUrl: z.string().url().describe('The public URL of the generated PDF in Firebase Storage.'),
 });
 export type GeneratePdfOutput = z.infer<typeof GeneratePdfOutputSchema>;
