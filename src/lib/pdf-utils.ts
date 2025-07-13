@@ -2,18 +2,9 @@
 import type { FormValues } from './definitions';
 import { generatePdf } from '@/ai/flows/generate-pdf-flow';
 
-function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: contentType });
-}
-
 /**
- * Generates a PDF on the server, gets the Base64 data, and triggers a download in the browser.
+ * Generates a PDF on the server and opens it in a new browser tab using a Data URL.
+ * This method is fast and avoids both direct downloads and blob URLs.
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
  */
@@ -25,29 +16,23 @@ export async function generateAndHandlePdf(
         // Step 1: Call the server flow to generate the PDF data.
         const result = await generatePdf({ formData, pdfType });
         
-        if (!result || !result.pdfBase64 || !result.filename) {
-            throw new Error("PDF generation failed on the server or returned no data.");
+        if (!result || !result.pdfBase64) {
+            throw new Error("A PDF generálása a szerveren sikertelen volt, vagy nem adott vissza adatot.");
         }
 
-        // Step 2: Convert Base64 to a Blob on the client.
-        const pdfBlob = base64ToBlob(result.pdfBase64);
+        // Step 2: Create a Data URL from the Base64 string.
+        const dataUrl = `data:application/pdf;base64,${result.pdfBase64}`;
         
-        // Step 3: Create a local URL for the Blob.
-        const blobUrl = URL.createObjectURL(pdfBlob);
-
-        // Step 4: Create a temporary link element to trigger the download.
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = result.filename; // Use the filename from the server
-        document.body.appendChild(link);
-        link.click();
-        
-        // Step 5: Clean up by removing the link and revoking the object URL.
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
+        // Step 3: Open the Data URL in a new tab.
+        // The browser will render the PDF directly from this URL.
+        const newWindow = window.open(dataUrl, '_blank');
+        if (!newWindow) {
+            throw new Error("A böngésző letiltotta a felugró ablakot. Kérjük, engedélyezze a felugró ablakokat ezen az oldalon.");
+        }
 
     } catch (error: any) {
-        console.error("Error in generateAndHandlePdf:", error);
-        throw new Error(`PDF processing failed: ${error.message}`);
+        console.error("Hiba a generateAndHandlePdf függvényben:", error);
+        // Re-throw the error to be caught by the form's error handler.
+        throw error; 
     }
 }
