@@ -13,12 +13,7 @@ import fontkit from '@pdf-lib/fontkit';
 
 // Helper functions
 const FONT_SIZE = 12;
-let pdfTemplateBytes = {
-    main: null as Buffer | null,
-    kellekszavatossag: null as Buffer | null,
-    meghatalmazas: null as Buffer | null,
-};
-let fontBytes: Buffer | null = null;
+const BASE_URL = 'https://pdf.pomazauto.hu';
 
 async function loadAssetAsBuffer(url: string): Promise<Buffer> {
     const response = await fetch(url);
@@ -29,23 +24,6 @@ async function loadAssetAsBuffer(url: string): Promise<Buffer> {
     return Buffer.from(arrayBuffer);
 }
 
-const baseUrl = 'https://pdf.pomazauto.hu';
-
-async function loadAssets() {
-    if (!fontBytes) {
-        fontBytes = await loadAssetAsBuffer('https://pdf.pomazauto.hu/fonts/DejaVuSans.ttf');
-    }
-    if (!pdfTemplateBytes.main) {
-        pdfTemplateBytes.main = await loadAssetAsBuffer(`${baseUrl}/sablon.pdf`);
-    }
-    if (!pdfTemplateBytes.kellekszavatossag) {
-        pdfTemplateBytes.kellekszavatossag = await loadAssetAsBuffer(`${baseUrl}/kellekszavatossagi_nyilatkozat.pdf`);
-    }
-    if (!pdfTemplateBytes.meghatalmazas) {
-        pdfTemplateBytes.meghatalmazas = await loadAssetAsBuffer(`${baseUrl}/meghatalmazas_okmanyiroda.pdf`);
-    }
-}
-
 const fillFormField = (form: any, fieldName: string, value: string | undefined) => {
     if (value) {
         try {
@@ -53,12 +31,12 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
             field.setText(value);
             field.setFontSize(FONT_SIZE);
         } catch (e) {
-            console.warn(`Field "${fieldName}" not found in PDF.`);
+            console.warn(`Field "${fieldName}" not found in PDF for value "${value}".`);
         }
     }
 };
 
-async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void): Promise<Uint8Array> {
+async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void, fontBytes: Buffer): Promise<Uint8Array> {
     if (!templateBytes) throw new Error("PDF template is not loaded.");
     if (!fontBytes) throw new Error("Font is not loaded.");
 
@@ -196,29 +174,37 @@ const generatePdfFlow = ai.defineFlow(
     outputSchema: GeneratePdfOutputSchema,
   },
   async ({ formData, pdfType }) => {
-    await loadAssets();
+    // Always load assets on every run for reliability
+    const fontBytes = await loadAssetAsBuffer(`${BASE_URL}/fonts/DejaVuSans.ttf`);
+
+    const templates = {
+        main: () => loadAssetAsBuffer(`${BASE_URL}/sablon.pdf`),
+        kellekszavatossag: () => loadAssetAsBuffer(`${BASE_URL}/kellekszavatossagi_nyilatkozat.pdf`),
+        meghatalmazas: () => loadAssetAsBuffer(`${BASE_URL}/meghatalmazas_okmanyiroda.pdf`),
+    };
 
     const data: FormValues = formData;
     const filenameBase = getFilenameBase(data);
     
-    const pdfJobs: { type: 'main' | 'kellekszavatossag' | 'meghatalmazas', filler: any, template: Buffer | null }[] = [];
+    const pdfJobs: { type: 'main' | 'kellekszavatossag' | 'meghatalmazas', filler: any, templateLoader: () => Promise<Buffer> }[] = [];
 
     if (pdfType === 'all' || pdfType === 'main') {
-        pdfJobs.push({ type: 'main', filler: fillMainPdfForm, template: pdfTemplateBytes.main });
+        pdfJobs.push({ type: 'main', filler: fillMainPdfForm, templateLoader: templates.main });
     }
     if (pdfType === 'all' || pdfType === 'kellekszavatossag') {
-        pdfJobs.push({ type: 'kellekszavatossag', filler: fillWarrantyPdfForm, template: pdfTemplateBytes.kellekszavatossag });
+        pdfJobs.push({ type: 'kellekszavatossag', filler: fillWarrantyPdfForm, templateLoader: templates.kellekszavatossag });
     }
     if (pdfType === 'all' || pdfType === 'meghatalmazas') {
-        pdfJobs.push({ type: 'meghatalmazas', filler: fillAuthPdfForm, template: pdfTemplateBytes.meghatalmazas });
+        pdfJobs.push({ type: 'meghatalmazas', filler: fillAuthPdfForm, templateLoader: templates.meghatalmazas });
     }
 
     const generatedPdfBytesArray = await Promise.all(
-      pdfJobs.map(async ({ template, filler }) => {
-        if (!template) {
-          throw new Error(`PDF template is missing.`);
+      pdfJobs.map(async ({ templateLoader, filler }) => {
+        const templateBytes = await templateLoader();
+        if (!templateBytes) {
+          throw new Error(`PDF template could not be loaded.`);
         }
-        return fillAndGetPdfBytes(template, data, filler);
+        return fillAndGetPdfBytes(templateBytes, data, filler, fontBytes);
       })
     );
     
