@@ -23,7 +23,7 @@ let pdfTemplateBytes = {
 let fontBytes: Buffer | null = null;
 
 async function loadAssetAsBuffer(url: string): Promise<Buffer> {
-    const response = await fetch(url, { cache: 'force-cache' });
+    const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
     }
