@@ -9,6 +9,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 const ConvertNumberToWordsInputSchema = z.object({
   number: z.number().describe('The numerical value to convert to words.'),
@@ -38,7 +39,9 @@ const convertNumberToWordsFlow = ai.defineFlow(
     outputSchema: ConvertNumberToWordsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input, {
+        model: googleAI.model('gemini-1.5-flash-latest'),
+      });
     return output!;
   }
 );
