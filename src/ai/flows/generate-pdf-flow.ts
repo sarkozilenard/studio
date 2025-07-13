@@ -45,20 +45,23 @@ async function loadAssetAsBuffer(url: string): Promise<Buffer> {
     }
 }
 
+const baseUrl = 'https://pdf.pomazauto.hu'; // vagy amit használsz
+
 async function loadAssets() {
     if (!fontBytes) {
-        fontBytes = await loadAssetAsBuffer('https://pdf.pomazauto.hu/fonts/DejaVuSans.ttf');
+        fontBytes = await loadAssetAsBuffer(`${baseUrl}/fonts/DejaVuSans.ttf`);
     }
     if (!pdfTemplateBytes.main) {
-        pdfTemplateBytes.main = await loadAssetAsBuffer('/sablon.pdf');
+        pdfTemplateBytes.main = await loadAssetAsBuffer(`${baseUrl}/sablon.pdf`);
     }
     if (!pdfTemplateBytes.kellekszavatossag) {
-        pdfTemplateBytes.kellekszavatossag = await loadAssetAsBuffer('/kellekszavatossagi_nyilatkozat.pdf');
+        pdfTemplateBytes.kellekszavatossag = await loadAssetAsBuffer(`${baseUrl}/kellekszavatossagi_nyilatkozat.pdf`);
     }
     if (!pdfTemplateBytes.meghatalmazas) {
-        pdfTemplateBytes.meghatalmazas = await loadAssetAsBuffer('/meghatalmazas_okmanyiroda.pdf');
+        pdfTemplateBytes.meghatalmazas = await loadAssetAsBuffer(`${baseUrl}/meghatalmazas_okmanyiroda.pdf`);
     }
 }
+
 
 
 const fillFormField = (form: any, fieldName: string, value: string | undefined) => {
