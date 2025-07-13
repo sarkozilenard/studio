@@ -10,8 +10,6 @@ import { PDFDocument } from 'pdf-lib';
 import type { FormValues, GeneratePdfInput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import fontkit from '@pdf-lib/fontkit';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 // Helper functions
 const FONT_SIZE = 12;
@@ -217,14 +215,12 @@ const generatePdfFlow = ai.defineFlow(
     if (pdfType !== 'all') {
         filename = `${filenameBase}-${pdfType}.pdf`;
     }
-
-    // Upload to Firebase Storage
-    const storageRef = ref(storage, `generated-pdfs/${filename}`);
-    const snapshot = await uploadBytes(storageRef, finalPdfBytes, { contentType: 'application/pdf' });
-    const downloadURL = await getDownloadURL(snapshot.ref);
+    
+    const pdfBase64 = Buffer.from(finalPdfBytes).toString('base64');
     
     return {
-      pdfUrl: downloadURL
+      pdfBase64: pdfBase64,
+      filename: filename
     };
   }
 );
