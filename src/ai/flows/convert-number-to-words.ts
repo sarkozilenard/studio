@@ -29,7 +29,21 @@ const prompt = ai.definePrompt({
   name: 'convertNumberToWordsPrompt',
   input: {schema: ConvertNumberToWordsInputSchema},
   output: {schema: ConvertNumberToWordsOutputSchema},
-  prompt: `Convert the number {{{number}}} to Hungarian words. The output should be capitalized. For example, if the input is 123, the output should be "Egyszázhuszonhárom".`,
+  prompt: `You are a helpful assistant that converts numbers into Hungarian words for legal documents.
+Your task is to convert the number {{{number}}} into its Hungarian text equivalent.
+
+Follow these rules strictly:
+1.  The entire output must be a single, continuous word. Do not use spaces.
+2.  The entire output must be capitalized.
+3.  The output must be in Hungarian.
+
+Here are some examples:
+- Input: 123, Output: EGYszázhuszonhárom
+- Input: 2500, Output: KETTŐEZER-ÖTSZÁZ
+- Input: 15550, Output: TIZENÖTEZER-ÖTSZÁZÖTVEN
+- Input: 458321, Output: NÉGYSZÁZÖTVENNYOLCEZER-HÁROMSZÁZHUSZONEGY
+
+Convert the number {{{number}}}.`,
 });
 
 const convertNumberToWordsFlow = ai.defineFlow(
