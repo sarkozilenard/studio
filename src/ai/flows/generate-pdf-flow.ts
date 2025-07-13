@@ -5,7 +5,7 @@
  * - generatePdf - A function that handles filling PDF templates and returns a public URL.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { PDFDocument } from 'pdf-lib';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
@@ -23,25 +23,12 @@ let pdfTemplateBytes = {
 let fontBytes: Buffer | null = null;
 
 async function loadAssetAsBuffer(url: string): Promise<Buffer> {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
-    } catch (error) {
-        console.error(`Failed to load asset from ${url}:`, error);
-        const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:9002';
-        console.log(`Retrying with base URL: ${baseUrl}`);
-        const absoluteUrl = new URL(url, baseUrl).toString();
-         const response = await fetch(absoluteUrl);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${absoluteUrl}: ${response.statusText}`);
-        }
-        const arrayBuffer = await response.arrayBuffer();
-        return Buffer.from(arrayBuffer);
+    const response = await fetch(url, { cache: 'force-cache' });
+    if (!response.ok) {
+        throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
     }
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
 }
 
 const baseUrl = 'https://pdf.pomazauto.hu';
