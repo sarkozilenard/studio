@@ -13,16 +13,13 @@ function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
 }
 
 /**
- * Generates a PDF on the server, gets the Base64 data, creates a local blob URL,
- * and opens it for the user to print or download.
+ * Generates a PDF on the server, gets the Base64 data, and triggers a download in the browser.
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
- * @param action The action to perform (download or print).
  */
 export async function generateAndHandlePdf(
     formData: FormValues, 
-    pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all',
-    action: 'download' | 'print'
+    pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all'
 ) {
     try {
         // Step 1: Call the server flow to generate the PDF data.
@@ -38,22 +35,16 @@ export async function generateAndHandlePdf(
         // Step 3: Create a local URL for the Blob.
         const blobUrl = URL.createObjectURL(pdfBlob);
 
-        // Step 4: Perform the requested action.
-        if (action === 'print') {
-            // Open the blob URL in a new tab. Modern browsers will show a PDF viewer
-            // with a print button, which is more reliable than direct print commands.
-            window.open(blobUrl, '_blank');
-        } else if (action === 'download') {
-            // Create a temporary link element to trigger the download.
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = result.filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            // Optional: Revoke the blob URL after a short delay to free up memory.
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-        }
+        // Step 4: Create a temporary link element to trigger the download.
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = result.filename; // Use the filename from the server
+        document.body.appendChild(link);
+        link.click();
+        
+        // Step 5: Clean up by removing the link and revoking the object URL.
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
 
     } catch (error: any) {
         console.error("Error in generateAndHandlePdf:", error);
