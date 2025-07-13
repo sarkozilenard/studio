@@ -11,9 +11,9 @@ import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { Storage } from '@google-cloud/storage';
 
-// Initialize Google Cloud Storage
-const storage = new Storage({ projectId: 'pdf-kitolto' });
-const bucketName = 'pdf-kitolto.appspot.com';
+// Initialize Google Cloud Storage with the correct project ID
+const storage = new Storage({ projectId: 'e-szerzds' });
+const bucketName = 'e-szerzds.firebasestorage.app';
 const bucket = storage.bucket(bucketName);
 
 // Helper functions
