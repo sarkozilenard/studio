@@ -40,7 +40,7 @@ const convertNumberToWordsFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input, {
-        model: 'gemini-1.5-flash-latest',
+        model: googleAI.model('gemini-1.5-flash-latest'),
       });
     return output!;
   }
