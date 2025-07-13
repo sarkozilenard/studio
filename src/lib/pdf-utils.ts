@@ -1,8 +1,6 @@
 'use client';
 import type { FormValues } from './definitions';
 import { generatePdf } from '@/ai/flows/generate-pdf-flow';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
     const byteCharacters = atob(base64);
@@ -14,10 +12,9 @@ function base64ToBlob(base64: string, contentType = 'application/pdf'): Blob {
     return new Blob([byteArray], { type: contentType });
 }
 
-
 /**
- * Generates a PDF on the server, uploads it to Firebase Storage from the client,
- * and then opens the returned public URL.
+ * Generates a PDF on the server, gets the Base64 data, creates a local blob URL,
+ * and opens it for the user to print or download.
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
  * @param action The action to perform (download or print).
@@ -32,38 +29,34 @@ export async function generateAndHandlePdf(
         const result = await generatePdf({ formData, pdfType });
         
         if (!result || !result.pdfBase64 || !result.filename) {
-            throw new Error("PDF generation failed on the server.");
+            throw new Error("PDF generation failed on the server or returned no data.");
         }
 
-        // Step 2: Convert Base64 to Blob on the client.
+        // Step 2: Convert Base64 to a Blob on the client.
         const pdfBlob = base64ToBlob(result.pdfBase64);
         
-        // Step 3: Upload the Blob to Firebase Storage.
-        const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
-        const snapshot = await uploadBytes(storageRef, pdfBlob);
+        // Step 3: Create a local URL for the Blob.
+        const blobUrl = URL.createObjectURL(pdfBlob);
 
-        // Step 4: Get the public download URL.
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        // Step 5: Open the URL in a new tab.
-        // Modern browsers will show a PDF viewer with print/download options.
-        window.open(downloadURL, '_blank');
+        // Step 4: Perform the requested action.
+        if (action === 'print') {
+            // Open the blob URL in a new tab. Modern browsers will show a PDF viewer
+            // with a print button, which is more reliable than direct print commands.
+            window.open(blobUrl, '_blank');
+        } else if (action === 'download') {
+            // Create a temporary link element to trigger the download.
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = result.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            // Optional: Revoke the blob URL after a short delay to free up memory.
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+        }
 
     } catch (error: any) {
         console.error("Error in generateAndHandlePdf:", error);
-        
-        // Provide a more specific error message for common issues.
-        if (error.code && error.code.includes('storage/unauthorized')) {
-            throw new Error(
-                "PDF Upload Failed: Permission denied. Please check your Firebase Storage security rules to allow writes from authenticated users."
-            );
-        }
-        if (error.code && error.code.includes('storage/object-not-found')) {
-             throw new Error(
-                "PDF Upload Failed: The storage bucket was not found. Please ensure Firebase Storage is set up correctly."
-            );
-        }
-        
-        throw error;
+        throw new Error(`PDF processing failed: ${error.message}`);
     }
 }

@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation and upload flow.
+ * @fileOverview A server-side PDF generation flow that returns the PDF as a Base64 string.
  *
- * - generatePdf - A function that handles filling PDF templates, uploading to Firebase Storage, and returning the public URL.
+ * - generatePdf - A function that handles filling PDF templates and returning the file data.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
