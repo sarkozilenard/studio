@@ -48,11 +48,9 @@ export const FormSchema = z.object({
   tanu1_nev: z.string().optional(),
   tanu1_lakcim: z.string().optional(),
   tanu1_szig: z.string().optional(),
-  tanu1_szemelyi_megh: z.string().optional(),
   tanu2_nev: z.string().optional(),
   tanu2_lakcim: z.string().optional(),
   tanu2_szig: z.string().optional(),
-  tanu2_szemelyi_megh: z.string().optional(),
 
   // Price
   vetelar_szam: z.string().optional(),

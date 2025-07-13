@@ -171,8 +171,8 @@ function fillAuthPdfForm(form: any, data: FormValues) {
     fillFormField(form, 'tanu1_lakcim_megh', data.tanu1_lakcim);
     fillFormField(form, 'tanu2_nev_megh', data.tanu2_nev);
     fillFormField(form, 'tanu2_lakcim_megh', data.tanu2_lakcim);
-    fillFormField(form, 'tanu1_szemelyi_megh', data.tanu1_szemelyi_megh);
-    fillFormField(form, 'tanu2_szemelyi_megh', data.tanu2_szemelyi_megh);
+    fillFormField(form, 'tanu1_szemelyi_megh', data.tanu1_szig);
+    fillFormField(form, 'tanu2_szemelyi_megh', data.tanu2_szig);
 }
 
 const getFilenameBase = (data: FormValues) => {

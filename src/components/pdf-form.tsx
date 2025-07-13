@@ -40,8 +40,8 @@ const getDefaultValues = () => {
       ceg_neve: "", ceg_kepviselo: "", cegjegyzekszam: "", szekhely: "",
       vevo_nev: "", vevo_szul_hely_ido: "", vevo_anyja_neve: "", vevo_okmany_szam: "", vevo_lakcim: "",
       meghatalmazott_adatok: "", kell_tovabbi_info: "",
-      tanu1_nev: "", tanu1_lakcim: "", tanu1_szig: "", tanu1_szemelyi_megh: "",
-      tanu2_nev: "", tanu2_lakcim: "", tanu2_szig: "", tanu2_szemelyi_megh: "",
+      tanu1_nev: "", tanu1_lakcim: "", tanu1_szig: "",
+      tanu2_nev: "", tanu2_lakcim: "", tanu2_szig: "",
       vetelar_szam: "", vetelar_betukkel: "", fizetesi_mod: "készpénz", egyeb_fizetesi_mod: "",
       km_idopont: formattedDateForInput,
       atadas_ev: year, atadas_ho: monthName, atadas_nap: day,
@@ -338,10 +338,7 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
                             <FormField control={form.control} name="tanu1_nev" render={({ field }) => (<FormItem><FormLabel>Neve:</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="tanu1_lakcim" render={({ field }) => (<FormItem><FormLabel>Lakcíme:</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                         </div>
-                         <div className="grid md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="tanu1_szig" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz. (Adásvételi):</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
-                            <FormField control={form.control} name="tanu1_szemelyi_megh" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz. (Meghatalmazás):</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
-                        </div>
+                        <FormField control={form.control} name="tanu1_szig" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz.:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
                     </div>
                 </div>
                  <div>
@@ -371,10 +368,7 @@ export default function PdfForm({ pdfDocs }: PdfFormProps) {
                             <FormField control={form.control} name="tanu2_nev" render={({ field }) => (<FormItem><FormLabel>Neve:</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="tanu2_lakcim" render={({ field }) => (<FormItem><FormLabel>Lakcíme:</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                         </div>
-                         <div className="grid md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="tanu2_szig" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz. (Adásvételi):</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
-                             <FormField control={form.control} name="tanu2_szemelyi_megh" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz. (Meghatalmazás):</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
-                        </div>
+                        <FormField control={form.control} name="tanu2_szig" render={({ field }) => (<FormItem><FormLabel>Személyi ig. sz.:</FormLabel><FormControl><Input {...field} onChange={e => field.onChange(e.target.value.toUpperCase())} /></FormControl></FormItem>)} />
                     </div>
                 </div>
             </CardContent>
