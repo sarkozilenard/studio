@@ -5,7 +5,6 @@ import type { GeneratePdfOutput } from './definitions';
 import { storage } from './firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-
 export const loadPdfTemplates = async () => {
     // This function now just checks if the templates exist on the server by trying to fetch them.
     // The actual files are loaded by the server-side Genkit flow.
@@ -48,9 +47,30 @@ function base64ToBlob(base64Data: string, contentType = 'application/pdf'): Blob
     return new Blob(byteArrays, { type: contentType });
 }
 
+/**
+ * Creates an iframe with the PDF and triggers the print dialog.
+ * @param blob The PDF blob to print.
+ */
+function printBlob(blob: Blob) {
+    const url = URL.createObjectURL(blob);
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+        setTimeout(() => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }
+        }, 1); // A minimal timeout can help ensure the print dialog opens reliably.
+    };
+}
+
 
 /**
- * Generates a PDF on the server, uploads it to Firebase Storage, and handles the user action (print/download).
+ * Generates a PDF on the server, and handles the user action (print/download).
  * @param formData The form data from the user.
  * @param pdfType The type of PDF to generate.
  * @param action The action to perform ('download' or 'print').
@@ -71,40 +91,21 @@ export async function generateAndHandlePdf(
         // 2. Convert Base64 to Blob
         const pdfBlob = base64ToBlob(result.base64Data);
 
-        // 3. Upload Blob to Firebase Storage
-        const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
-        await uploadBytes(storageRef, pdfBlob);
-
-        // 4. Get the public download URL
-        const downloadURL = await getDownloadURL(storageRef);
-
-        // 5. Handle the user action with the public URL
+        // 3. Handle action
         if (action === 'print') {
-            const printWindow = window.open(downloadURL, '_blank', 'noopener,noreferrer');
-            if (printWindow) {
-                printWindow.onload = () => {
-                    // Small delay to ensure PDF is fully rendered in the new window
-                    setTimeout(() => {
-                        try {
-                            printWindow.print();
-                        } catch (e) {
-                            console.error("Print failed:", e);
-                            // The user might have a popup blocker, but they can still print manually.
-                        }
-                    }, 500);
-                };
-            } else {
-                 // Fallback for browsers with strict popup blockers
-                 alert("A nyomtatási ablak blokkolva lett. A PDF egy új lapon nyílik meg, ahol manuálisan is nyomtathat.");
-                 window.open(downloadURL, '_blank', 'noopener,noreferrer');
-            }
+            // For printing, use a blob URL directly for speed.
+            printBlob(pdfBlob);
         } else if (action === 'download') {
-            // For downloading, we can still use the blob to avoid a second network request,
-            // or just trigger a download from the new URL. The latter is simpler.
+            // For downloading, upload to Firebase for a persistent URL.
+            const storageRef = ref(storage, `generated-pdfs/${result.filename}`);
+            await uploadBytes(storageRef, pdfBlob);
+
+            const downloadURL = await getDownloadURL(storageRef);
+
             const link = document.createElement('a');
             link.href = downloadURL;
-            link.target = '_blank'; // Open in new tab which will trigger download
-            link.download = result.filename; // This is a hint, browser might ignore it
+            link.target = '_blank'; // Open in new tab which may trigger download or display
+            link.download = result.filename; // This is a hint for the browser
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -112,6 +113,14 @@ export async function generateAndHandlePdf(
 
     } catch (error: any) {
         console.error("Error in generateAndHandlePdf:", error);
+         // Check for CORS or permission errors specifically
+        if (error.code === 'storage/unauthorized' || error.code === 'storage/object-not-found' || (error.message && error.message.includes('CORS'))) {
+             throw new Error(
+                "PDF Upload Failed: This is likely a permissions or CORS issue with Firebase Storage. " +
+                "Please check your Firebase Storage security rules and CORS configuration in the Google Cloud console. " +
+                "Original error: " + error.message
+            );
+        }
         throw error;
     }
 }
