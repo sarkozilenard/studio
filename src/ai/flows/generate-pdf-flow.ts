@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation flow.
+ * @fileOverview A server-side PDF generation flow that uploads to Firebase Storage.
  *
- * - generatePdf - A function that handles filling PDF templates.
+ * - generatePdf - A function that handles filling PDF templates and returns a public URL.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
@@ -10,7 +10,8 @@ import { PDFDocument } from 'pdf-lib';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import fontkit from '@pdf-lib/fontkit';
-
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Helper functions (adapted from pdf-utils)
 const FONT_SIZE = 12;
@@ -31,8 +32,6 @@ async function loadAssetAsBuffer(url: string): Promise<Buffer> {
         return Buffer.from(arrayBuffer);
     } catch (error) {
         console.error(`Failed to load asset from ${url}:`, error);
-        // In a deployed environment, we might need to construct the full URL.
-        // This fallback attempts to use the VERCEL_URL if available.
         const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:9002';
         console.log(`Retrying with base URL: ${baseUrl}`);
         const absoluteUrl = new URL(url, baseUrl).toString();
@@ -45,11 +44,11 @@ async function loadAssetAsBuffer(url: string): Promise<Buffer> {
     }
 }
 
-const baseUrl = 'https://pdf.pomazauto.hu'; // vagy amit használsz
+const baseUrl = 'https://pdf.pomazauto.hu';
 
 async function loadAssets() {
     if (!fontBytes) {
-        fontBytes = await loadAssetAsBuffer(`${baseUrl}/fonts/DejaVuSans.ttf`);
+        fontBytes = await loadAssetAsBuffer('https://pdf.pomazauto.hu/fonts/DejaVuSans.ttf');
     }
     if (!pdfTemplateBytes.main) {
         pdfTemplateBytes.main = await loadAssetAsBuffer(`${baseUrl}/sablon.pdf`);
@@ -61,8 +60,6 @@ async function loadAssets() {
         pdfTemplateBytes.meghatalmazas = await loadAssetAsBuffer(`${baseUrl}/meghatalmazas_okmanyiroda.pdf`);
     }
 }
-
-
 
 const fillFormField = (form: any, fieldName: string, value: string | undefined) => {
     if (value) {
@@ -76,7 +73,7 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
     }
 };
 
-async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void) {
+async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void): Promise<Uint8Array> {
     if (!templateBytes) throw new Error("PDF template is not loaded.");
     if (!fontBytes) throw new Error("Font is not loaded.");
 
@@ -100,19 +97,18 @@ async function fillAndFlatten(templateBytes: Buffer, data: FormValues, fillerFn:
     });
 
     form.flatten();
-    const pdfBytes = await pdfDoc.save();
-    return Buffer.from(pdfBytes).toString('base64');
+    return pdfDoc.save();
 }
 
 // PDF filling logic from pdf-utils.ts
 function fillMainPdfForm(form: any, data: FormValues) {
     fillFormField(form, 'rendszam', data.rendszam);
+    fillFormField(form, 'gyartmany_tipus', data.gyartmany_tipus);
     fillFormField(form, 'alvazszam', data.alvazszam);
     fillFormField(form, 'motorszam', data.motorszam);
     fillFormField(form, 'km_allas', data.km_allas);
     fillFormField(form, 'torzskonyv_szam', data.torzskonyv_szam);
     fillFormField(form, 'forgalmi_szam', data.forgalmi_szam);
-    fillFormField(form, 'gyartmany_tipus', data.gyartmany_tipus);
     fillFormField(form, 'km_idopont', data.km_idopont);
 
     fillFormField(form, 'ceg_neve', data.ceg_neve);
@@ -223,15 +219,23 @@ const generatePdfFlow = ai.defineFlow(
     }
 
     const generatedPdfs = await Promise.all(
-        pdfsToGenerate.map(async ({ template, filler, filename }) => {
-            if (!template) {
-                throw new Error(`PDF template is missing.`);
-            }
-            const pdfData = await fillAndFlatten(template, data, filler);
-            return { filename, data: pdfData };
-        })
+      pdfsToGenerate.map(async ({ template, filler, filename }) => {
+        if (!template) {
+          throw new Error(`PDF template is missing.`);
+        }
+        const pdfBytes = await fillAndGetPdfBytes(template, data, filler);
+        
+        // Upload to Firebase Storage
+        const storageRef = ref(storage, `generated-pdfs/${filename}`);
+        await uploadBytes(storageRef, pdfBytes, { contentType: 'application/pdf' });
+        
+        // Get download URL
+        const downloadUrl = await getDownloadURL(storageRef);
+        
+        return { filename, url: downloadUrl };
+      })
     );
-
+    
     return { pdfs: generatedPdfs };
   }
 );

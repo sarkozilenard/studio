@@ -25,31 +25,28 @@ export const loadPdfTemplates = async () => {
     }
 };
 
-function handlePdfData(pdfData: string, action: 'download' | 'print', filename: string) {
-    const byteCharacters = atob(pdfData);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-
+function handlePdfUrl(url: string, action: 'download' | 'print') {
     if (action === 'download') {
+        // For downloads, we can just open the URL. The browser will handle it.
+        // For a more direct download experience, a link with a download attribute is better.
         const link = document.createElement('a');
         link.href = url;
-        link.download = filename;
+        link.target = '_blank'; // Open in a new tab to avoid navigating away
+        // The 'download' attribute is less reliable with cross-origin URLs, 
+        // but opening in a new tab is a solid fallback.
+        // link.download = filename; 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+
     } else if (action === 'print') {
-        const printWindow = window.open(url);
+        const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
         if (printWindow) {
-            printWindow.onload = () => {
-                printWindow.print();
-                // We don't close the window to allow the user to save it if they cancel printing.
-                // The blob URL will be revoked when the window is closed by the user.
+             printWindow.onload = () => {
+                // A timeout is often necessary to ensure the PDF viewer has fully loaded the document
+                setTimeout(() => {
+                    printWindow.print();
+                }, 500); 
             };
         } else {
             alert("Kérjük, engedélyezze a felugró ablakokat a nyomtatáshoz.");
@@ -70,6 +67,6 @@ export async function generateAndHandlePdf(
     }
     
     result.pdfs.forEach(pdf => {
-        handlePdfData(pdf.data, action, pdf.filename);
+        handlePdfUrl(pdf.url, action);
     });
 }
