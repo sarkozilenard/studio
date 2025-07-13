@@ -29,21 +29,28 @@ const prompt = ai.definePrompt({
   name: 'convertNumberToWordsPrompt',
   input: {schema: ConvertNumberToWordsInputSchema},
   output: {schema: ConvertNumberToWordsOutputSchema},
-  prompt: `You are a helpful assistant that converts numbers into Hungarian words for legal documents.
+  prompt: `You are an expert assistant that converts numbers into their Hungarian word equivalents, specifically for legal documents. Your output must be precise and follow Hungarian orthography rules for numbers.
+
 Your task is to convert the number {{{number}}} into its Hungarian text equivalent.
 
 Follow these rules strictly:
-1.  The entire output must be a single, continuous word. Do not use spaces.
-2.  The entire output must be capitalized.
-3.  The output must be in Hungarian.
+1.  The entire output must be capitalized.
+2.  Numbers up to and including 2000 are written as a single word.
+3.  For numbers above 2000, group them in threes from the right, separating the groups with a hyphen (-).
+4.  Exception: If a number is a round multiple of a thousand (e.g., 200000, 3000000), it should be written as a single word without a hyphen.
+5.  Do not use spaces in the output.
 
-Here are some examples:
-- Input: 123, Output: EGYszázhuszonhárom
-- Input: 2500, Output: KETTŐEZER-ÖTSZÁZ
+Here are some examples demonstrating the rules:
+- Input: 123, Output: EGYSZÁZHUSZONHÁROM
+- Input: 2000, Output: KETTŐEZER
+- Input: 2005, Output: KÉTEZER-ÖT
+- Input: 4360, Output: NÉGYEZER-HÁROMSZÁZHATVAN
 - Input: 15550, Output: TIZENÖTEZER-ÖTSZÁZÖTVEN
+- Input: 63017, Output: HATVANHÁROMEZER-TIZENHÉT
+- Input: 200000, Output: KÉTSZÁZEZER
 - Input: 458321, Output: NÉGYSZÁZÖTVENNYOLCEZER-HÁROMSZÁZHUSZONEGY
 
-Convert the number {{{number}}}.`,
+Now, convert the number {{{number}}}.`,
 });
 
 const convertNumberToWordsFlow = ai.defineFlow(
