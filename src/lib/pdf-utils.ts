@@ -44,23 +44,16 @@ function handlePdfData(pdfData: string, action: 'download' | 'print', filename: 
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     } else if (action === 'print') {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = url;
-        
-        iframe.onload = () => {
-            // The iframe's contentWindow will trigger the print dialog itself.
-            // This avoids cross-origin security errors.
-            iframe.contentWindow?.print();
-            
-            // Clean up after a short delay
-            setTimeout(() => {
-                document.body.removeChild(iframe);
-                URL.revokeObjectURL(url);
-            }, 200);
-        };
-        
-        document.body.appendChild(iframe);
+        const printWindow = window.open(url);
+        if (printWindow) {
+            printWindow.onload = () => {
+                printWindow.print();
+                // We don't close the window to allow the user to save it if they cancel printing.
+                // The blob URL will be revoked when the window is closed by the user.
+            };
+        } else {
+            alert("Kérjük, engedélyezze a felugró ablakokat a nyomtatáshoz.");
+        }
     }
 }
 
