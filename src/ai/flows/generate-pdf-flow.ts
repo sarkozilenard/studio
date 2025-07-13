@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation flow that uploads to Firebase Storage.
+ * @fileOverview A server-side PDF generation flow.
  *
- * - generatePdf - A function that handles filling PDF templates and returns a public URL.
+ * - generatePdf - A function that handles filling PDF templates and returns the PDF data.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
@@ -10,10 +10,8 @@ import { PDFDocument } from 'pdf-lib';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import fontkit from '@pdf-lib/fontkit';
-import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
-// Helper functions (adapted from pdf-utils)
+// Helper functions
 const FONT_SIZE = 12;
 let pdfTemplateBytes = {
     main: null as Buffer | null,
@@ -87,7 +85,6 @@ async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fille
     return pdfDoc.save();
 }
 
-// PDF filling logic from pdf-utils.ts
 function fillMainPdfForm(form: any, data: FormValues) {
     fillFormField(form, 'rendszam', data.rendszam);
     fillFormField(form, 'gyartmany_tipus', data.gyartmany_tipus);
@@ -181,6 +178,16 @@ const getFilenameBase = (data: FormValues) => {
     return `${rendszam}-${alvazszam}-${dateStr}`;
 };
 
+async function mergePdfs(pdfBytesArray: Uint8Array[]): Promise<Uint8Array> {
+    const mergedPdf = await PDFDocument.create();
+    for (const pdfBytes of pdfBytesArray) {
+        const pdf = await PDFDocument.load(pdfBytes);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+    }
+    return mergedPdf.save();
+}
+
 // Main flow
 const generatePdfFlow = ai.defineFlow(
   {
@@ -193,37 +200,43 @@ const generatePdfFlow = ai.defineFlow(
 
     const data: FormValues = formData;
     const filenameBase = getFilenameBase(data);
-    const pdfsToGenerate: { type: 'main' | 'kellekszavatossag' | 'meghatalmazas', filler: any, template: Buffer | null, filename: string }[] = [];
+    
+    const pdfJobs: { type: 'main' | 'kellekszavatossag' | 'meghatalmazas', filler: any, template: Buffer | null }[] = [];
 
     if (pdfType === 'all' || pdfType === 'main') {
-        pdfsToGenerate.push({ type: 'main', filler: fillMainPdfForm, template: pdfTemplateBytes.main, filename: `${filenameBase}-adasveteli.pdf` });
+        pdfJobs.push({ type: 'main', filler: fillMainPdfForm, template: pdfTemplateBytes.main });
     }
     if (pdfType === 'all' || pdfType === 'kellekszavatossag') {
-        pdfsToGenerate.push({ type: 'kellekszavatossag', filler: fillWarrantyPdfForm, template: pdfTemplateBytes.kellekszavatossag, filename: `${filenameBase}-kellekszavatossagi.pdf` });
+        pdfJobs.push({ type: 'kellekszavatossag', filler: fillWarrantyPdfForm, template: pdfTemplateBytes.kellekszavatossag });
     }
     if (pdfType === 'all' || pdfType === 'meghatalmazas') {
-        pdfsToGenerate.push({ type: 'meghatalmazas', filler: fillAuthPdfForm, template: pdfTemplateBytes.meghatalmazas, filename: `${filenameBase}-meghatalmazas.pdf` });
+        pdfJobs.push({ type: 'meghatalmazas', filler: fillAuthPdfForm, template: pdfTemplateBytes.meghatalmazas });
     }
 
-    const generatedPdfs = await Promise.all(
-      pdfsToGenerate.map(async ({ template, filler, filename }) => {
+    const generatedPdfBytesArray = await Promise.all(
+      pdfJobs.map(async ({ template, filler }) => {
         if (!template) {
           throw new Error(`PDF template is missing.`);
         }
-        const pdfBytes = await fillAndGetPdfBytes(template, data, filler);
-        
-        // Upload to Firebase Storage
-        const storageRef = ref(storage, `generated-pdfs/${filename}`);
-        await uploadBytes(storageRef, pdfBytes, { contentType: 'application/pdf' });
-        
-        // Get download URL
-        const downloadUrl = await getDownloadURL(storageRef);
-        
-        return { filename, url: downloadUrl };
+        return fillAndGetPdfBytes(template, data, filler);
       })
     );
     
-    return { pdfs: generatedPdfs };
+    const finalPdfBytes = generatedPdfBytesArray.length > 1
+        ? await mergePdfs(generatedPdfBytesArray)
+        : generatedPdfBytesArray[0];
+
+    const base64Pdf = Buffer.from(finalPdfBytes).toString('base64');
+    
+    let filename = `${filenameBase}.pdf`;
+    if (pdfType !== 'all') {
+        filename = `${filenameBase}-${pdfType}.pdf`;
+    }
+    
+    return {
+      filename: filename,
+      base64Data: base64Pdf,
+    };
   }
 );
 
