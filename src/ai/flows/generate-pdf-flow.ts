@@ -1,15 +1,20 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation flow that returns the PDF as a Base64 string.
+ * @fileOverview A server-side PDF generation flow that uploads the PDF to Firebase Storage and returns the public URL.
  *
- * - generatePdf - A function that handles filling PDF templates and returning the file data.
+ * - generatePdf - A function that handles filling PDF templates and returning the file URL.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import { PDFDocument } from 'pdf-lib';
 import type { FormValues, GeneratePdfInput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
+import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
+import { Storage } from '@google-cloud/storage';
+
+// Initialize Google Cloud Storage
+const storage = new Storage({ projectId: 'pdf-kitolto' });
+const bucketName = 'pdf-kitolto.appspot.com';
+const bucket = storage.bucket(bucketName);
 
 // Helper functions
 const FONT_SIZE = 12;
@@ -216,11 +221,21 @@ const generatePdfFlow = ai.defineFlow(
         filename = `${filenameBase}-${pdfType}.pdf`;
     }
     
-    const pdfBase64 = Buffer.from(finalPdfBytes).toString('base64');
+    // Upload to GCS
+    const filePath = `generated-pdfs/${filename}`;
+    const file = bucket.file(filePath);
+    await file.save(Buffer.from(finalPdfBytes), {
+      metadata: {
+        contentType: 'application/pdf',
+      },
+    });
+
+    // Make the file public and get the URL
+    await file.makePublic();
+    const publicUrl = file.publicUrl();
     
     return {
-      pdfBase64: pdfBase64,
-      filename: filename
+      pdfUrl: publicUrl
     };
   }
 );
