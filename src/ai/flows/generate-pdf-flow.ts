@@ -1,27 +1,21 @@
 'use server';
 /**
- * @fileOverview A server-side PDF generation flow that uploads the PDF to Firebase Storage and returns the public URL.
+ * @fileOverview A server-side PDF generation flow that returns the generated PDF as a Base64 encoded string.
  *
- * - generatePdf - A function that handles filling PDF templates and returning the file URL.
+ * - generatePdf - A function that handles filling PDF templates and returning the file content.
  */
 import { ai } from '@/ai/genkit';
 import type { FormValues, GeneratePdfInput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import { Storage } from '@google-cloud/storage';
-
-// Initialize Google Cloud Storage with the correct project ID
-const storage = new Storage({ projectId: 'e-szerzds' });
-const bucketName = 'e-szerzds.firebasestorage.app';
-const bucket = storage.bucket(bucketName);
 
 // Helper functions
 const FONT_SIZE = 12;
 const BASE_URL = 'https://pdf.pomazauto.hu';
 
 async function loadAssetAsBuffer(url: string): Promise<Buffer> {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' }); // Disable caching to ensure fresh assets
     if (!response.ok) {
         throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
     }
@@ -42,8 +36,8 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined) 
 };
 
 async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fillerFn: (form: any, data: FormValues) => void, fontBytes: Buffer): Promise<Uint8Array> {
-    if (!templateBytes) throw new Error("PDF template is not loaded.");
-    if (!fontBytes) throw new Error("Font is not loaded.");
+    if (!templateBytes || templateBytes.length === 0) throw new Error("PDF template is not loaded or is empty.");
+    if (!fontBytes || fontBytes.length === 0) throw new Error("Font is not loaded or is empty.");
 
     const pdfDoc = await PDFDocument.load(templateBytes);
     pdfDoc.registerFontkit(fontkit);
@@ -179,6 +173,7 @@ const generatePdfFlow = ai.defineFlow(
     outputSchema: GeneratePdfOutputSchema,
   },
   async ({ formData, pdfType }) => {
+    // Load assets on every request to ensure they are always available
     const fontBytes = await loadAssetAsBuffer(`${BASE_URL}/fonts/DejaVuSans.ttf`);
 
     const templates = {
@@ -188,7 +183,6 @@ const generatePdfFlow = ai.defineFlow(
     };
 
     const data: FormValues = formData;
-    const filenameBase = getFilenameBase(data);
     
     const pdfJobs: { type: 'main' | 'kellekszavatossag' | 'meghatalmazas', filler: any, templateLoader: () => Promise<Buffer> }[] = [];
 
@@ -205,9 +199,6 @@ const generatePdfFlow = ai.defineFlow(
     const generatedPdfBytesArray = await Promise.all(
       pdfJobs.map(async ({ templateLoader, filler }) => {
         const templateBytes = await templateLoader();
-        if (!templateBytes) {
-          throw new Error(`PDF template could not be loaded.`);
-        }
         return fillAndGetPdfBytes(templateBytes, data, filler, fontBytes);
       })
     );
@@ -216,26 +207,18 @@ const generatePdfFlow = ai.defineFlow(
         ? await mergePdfs(generatedPdfBytesArray)
         : generatedPdfBytesArray[0];
 
+    const filenameBase = getFilenameBase(data);
     let filename = `${filenameBase}.pdf`;
     if (pdfType !== 'all') {
         filename = `${filenameBase}-${pdfType}.pdf`;
     }
-    
-    // Upload to GCS
-    const filePath = `generated-pdfs/${filename}`;
-    const file = bucket.file(filePath);
-    await file.save(Buffer.from(finalPdfBytes), {
-      metadata: {
-        contentType: 'application/pdf',
-      },
-    });
 
-    // Make the file public and get the URL
-    await file.makePublic();
-    const publicUrl = file.publicUrl();
+    // Return the generated PDF as a base64 string
+    const pdfBase64 = Buffer.from(finalPdfBytes).toString('base64');
     
     return {
-      pdfUrl: publicUrl
+      pdfBase64,
+      filename
     };
   }
 );
