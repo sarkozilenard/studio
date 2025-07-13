@@ -7,8 +7,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { PDFDocument } from 'pdf-lib';
-import fs from 'fs/promises';
-import path from 'path';
 import type { FormValues, GeneratePdfInput, GeneratePdfOutput } from '@/lib/definitions';
 import { GeneratePdfInputSchema, GeneratePdfOutputSchema } from '@/lib/definitions';
 import fontkit from '@pdf-lib/fontkit';
@@ -23,28 +21,42 @@ let pdfTemplateBytes = {
 };
 let fontBytes: Buffer | null = null;
 
+async function loadAssetAsBuffer(url: string): Promise<Buffer> {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+    } catch (error) {
+        console.error(`Failed to load asset from ${url}:`, error);
+        // In a deployed environment, we might need to construct the full URL.
+        // This fallback attempts to use the VERCEL_URL if available.
+        const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:9002';
+        console.log(`Retrying with base URL: ${baseUrl}`);
+        const absoluteUrl = new URL(url, baseUrl).toString();
+         const response = await fetch(absoluteUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch ${absoluteUrl}: ${response.statusText}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+    }
+}
+
 async function loadAssets() {
     if (!fontBytes) {
-        // Load the font from the local public directory
-        const fontPath = path.join(process.cwd(), 'public', 'fonts', 'DejaVuSans.ttf');
-        try {
-            fontBytes = await fs.readFile(fontPath);
-        } catch (error) {
-            console.error(`Failed to read font file from ${fontPath}:`, error);
-            throw new Error(`Font file not found at ${fontPath}. Please ensure it has been uploaded.`);
-        }
+        fontBytes = await loadAssetAsBuffer('/fonts/DejaVuSans.ttf');
     }
     if (!pdfTemplateBytes.main) {
-        const mainPath = path.join(process.cwd(), 'public', 'sablon.pdf');
-        pdfTemplateBytes.main = await fs.readFile(mainPath);
+        pdfTemplateBytes.main = await loadAssetAsBuffer('/sablon.pdf');
     }
     if (!pdfTemplateBytes.kellekszavatossag) {
-        const kellekPath = path.join(process.cwd(), 'public', 'kellekszavatossagi_nyilatkozat.pdf');
-        pdfTemplateBytes.kellekszavatossag = await fs.readFile(kellekPath);
+        pdfTemplateBytes.kellekszavatossag = await loadAssetAsBuffer('/kellekszavatossagi_nyilatkozat.pdf');
     }
     if (!pdfTemplateBytes.meghatalmazas) {
-        const meghatPath = path.join(process.cwd(), 'public', 'meghatalmazas_okmanyiroda.pdf');
-        pdfTemplateBytes.meghatalmazas = await fs.readFile(meghatPath);
+        pdfTemplateBytes.meghatalmazas = await loadAssetAsBuffer('/meghatalmazas_okmanyiroda.pdf');
     }
 }
 
