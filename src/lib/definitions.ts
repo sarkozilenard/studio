@@ -63,22 +63,27 @@ export const FormSchema = FormValuesSchema; // for backward compatibility if use
 
 export type FormValues = z.infer<typeof FormValuesSchema>;
 
-export type Seller = {
-  id: string;
-  name: string;
-  kepviseloName?: string;
-  documentNumber?: string;
-  address: string;
-  timestamp?: any;
-};
 
-export type Witness = {
-  id: string;
-  name:string;
-  address: string;
-  idNumber: string;
-  timestamp?: any;
-};
+export const SellerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  kepviseloName: z.string().optional(),
+  documentNumber: z.string().optional(),
+  address: z.string(),
+  timestamp: z.any().optional(),
+});
+export type Seller = z.infer<typeof SellerSchema>;
+
+
+export const WitnessSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  address: z.string(),
+  idNumber: z.string(),
+  timestamp: z.any().optional(),
+});
+export type Witness = z.infer<typeof WitnessSchema>;
+
 
 export const SavedJobSchema = z.object({
   id: z.string(),
@@ -86,7 +91,6 @@ export const SavedJobSchema = z.object({
   createdAt: z.string(), // Using string for serializable date
   rendszam: z.string(),
 });
-
 export type SavedJob = z.infer<typeof SavedJobSchema>;
 
 

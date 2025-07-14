@@ -10,13 +10,13 @@ import { FormSchema, type FormValues, type Seller, type Witness } from "@/lib/de
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
-import { addDoc, collection, getDocs, query, serverTimestamp } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
 import { generateAndHandlePdf } from "@/lib/pdf-utils";
-import { Download, Printer, Save, Trash2, Loader2, FileClock } from "lucide-react";
+import { Printer, Save, Trash2, Loader2, FileClock } from "lucide-react";
 import { saveJob } from "@/ai/flows/job-flows";
+import { saveSeller, getSellers, saveWitness, getWitnesses } from "@/ai/flows/person-flows";
+
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
 
@@ -61,13 +61,9 @@ export default function PdfForm() {
 
   const loadDropdownData = useCallback(async () => {
     try {
-      const sellersSnapshot = await getDocs(query(collection(db, "sellers")));
-      const sellersData = sellersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Seller));
-      setSellers(sellersData);
-
-      const witnessesSnapshot = await getDocs(query(collection(db, "witnesses")));
-      const witnessesData = witnessesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Witness));
-      setWitnesses(witnessesData);
+      const [{ sellers }, { witnesses }] = await Promise.all([getSellers(), getWitnesses()]);
+      setSellers(sellers);
+      setWitnesses(witnesses);
     } catch (error) {
       console.error("Error loading dropdown data:", error);
       toast({ title: "Hiba a mentett adatok betöltésekor", variant: "destructive" });
@@ -109,41 +105,42 @@ export default function PdfForm() {
   const debouncedVetelarChange = useCallback(debounce(handleVetelarChange, 500), []);
 
   const handleSave = async (type: "seller" | "witness1" | "witness2") => {
-    let dataToSave;
-    let collectionName: string;
     let successMessage: string;
+    let result;
 
     if (type === 'seller') {
-      dataToSave = {
+      const dataToSave = {
         name: form.getValues('ceg_neve'),
         kepviseloName: form.getValues('ceg_kepviselo'),
         documentNumber: form.getValues('cegjegyzekszam'),
         address: form.getValues('szekhely'),
       };
-      collectionName = 'sellers';
+      if (!dataToSave.name) {
+        toast({ title: "Hiányzó adat", description: "A név megadása kötelező.", variant: "destructive" });
+        return;
+      }
+      result = await saveSeller(dataToSave);
       successMessage = 'Eladó adatok mentve.';
     } else {
       const witnessNum = type === 'witness1' ? 1 : 2;
-      dataToSave = {
+      const dataToSave = {
         name: form.getValues(`tanu${witnessNum}_nev`),
         address: form.getValues(`tanu${witnessNum}_lakcim`),
         idNumber: form.getValues(`tanu${witnessNum}_szig`),
       };
-      collectionName = 'witnesses';
+      if (!dataToSave.name) {
+        toast({ title: "Hiányzó adat", description: "A név megadása kötelező.", variant: "destructive" });
+        return;
+      }
+      result = await saveWitness(dataToSave);
       successMessage = `${witnessNum}. tanú adatok mentve.`;
     }
-
-    if (!dataToSave.name) {
-      toast({ title: "Hiányzó adat", description: "A név megadása kötelező.", variant: "destructive" });
-      return;
-    }
     
-    try {
-      await addDoc(collection(db, collectionName), { ...dataToSave, timestamp: serverTimestamp() });
-      toast({ title: "Sikeres mentés", description: successMessage });
-      loadDropdownData();
-    } catch (error) {
-      toast({ title: "Hiba mentés közben", variant: "destructive" });
+    if (result.success) {
+        toast({ title: "Sikeres mentés", description: successMessage });
+        loadDropdownData(); // Refresh data in dropdowns
+    } else {
+        toast({ title: "Hiba mentés közben", description: result.error, variant: "destructive" });
     }
   };
 
@@ -204,7 +201,6 @@ export default function PdfForm() {
 
   const onPdfAction = async (pdfType: 'main' | 'kellekszavatossag' | 'meghatalmazas' | 'all') => {
     setIsProcessing(true);
-    toast({ title: "PDF generálása nyomtatáshoz...", description: "Ez eltarthat egy pillanatig." });
     try {
         await generateAndHandlePdf(form.getValues(), pdfType);
     } catch (error) {

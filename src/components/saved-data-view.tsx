@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
 import type { Seller, Witness } from "@/lib/definitions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +16,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { getSellers, getWitnesses, deletePerson } from "@/ai/flows/person-flows";
 
 export default function SavedDataView() {
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -29,13 +28,9 @@ export default function SavedDataView() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const sellersQuery = query(collection(db, "sellers"), orderBy("timestamp", "desc"));
-      const sellersSnapshot = await getDocs(sellersQuery);
-      setSellers(sellersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Seller)));
-
-      const witnessesQuery = query(collection(db, "witnesses"), orderBy("timestamp", "desc"));
-      const witnessesSnapshot = await getDocs(witnessesQuery);
-      setWitnesses(witnessesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Witness)));
+      const [{ sellers }, { witnesses }] = await Promise.all([getSellers(), getWitnesses()]);
+      setSellers(sellers);
+      setWitnesses(witnesses);
     } catch (error) {
       console.error("Error fetching saved data:", error);
       toast({ title: "Hiba az adatok betöltésekor.", variant: "destructive" });
@@ -48,14 +43,18 @@ export default function SavedDataView() {
     fetchData();
   }, [fetchData]);
 
-  const handleDelete = async (collectionName: string, id: string) => {
+  const handleDelete = async (collectionName: 'sellers' | 'witnesses', id: string) => {
     try {
-      await deleteDoc(doc(db, collectionName, id));
-      toast({ title: "Sikeres törlés", description: "Az adat eltávolítva." });
-      fetchData(); // Refresh data
+      const result = await deletePerson({ collectionName, id });
+      if (result.success) {
+        toast({ title: "Sikeres törlés", description: "Az adat eltávolítva." });
+        fetchData(); // Refresh data
+      } else {
+        throw new Error(result.error || "Ismeretlen hiba a szerveren.");
+      }
     } catch (error) {
       console.error("Error deleting document:", error);
-      toast({ title: "Hiba a törlés során.", variant: "destructive" });
+      toast({ title: "Hiba a törlés során.", description: (error as Error).message, variant: "destructive" });
     }
   };
 
