@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PdfForm from "./pdf-form";
 import SavedDataView from "./saved-data-view";
-import { Loader2 } from "lucide-react";
+import SavedJobsView from "./saved-jobs-view";
 import { ThemeSwitcher } from "./theme-switcher";
 
 export default function MainLayout() {
@@ -21,12 +21,16 @@ export default function MainLayout() {
         </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="form">Űrlap Kitöltés</TabsTrigger>
-          <TabsTrigger value="saved">Mentett Adatok</TabsTrigger>
+          <TabsTrigger value="savedJobs">Mentett Munkák</TabsTrigger>
+          <TabsTrigger value="saved">Személyek Mentése</TabsTrigger>
         </TabsList>
         <TabsContent value="form">
             <PdfForm />
+        </TabsContent>
+        <TabsContent value="savedJobs">
+          <SavedJobsView />
         </TabsContent>
         <TabsContent value="saved">
           <SavedDataView />

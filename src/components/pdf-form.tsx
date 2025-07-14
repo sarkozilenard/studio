@@ -15,7 +15,7 @@ import { addDoc, collection, getDocs, query, serverTimestamp } from "firebase/fi
 import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
 import { generateAndHandlePdf } from "@/lib/pdf-utils";
-import { Download, Printer, Save, Trash2, Loader2 } from "lucide-react";
+import { Download, Printer, Save, Trash2, Loader2, FileClock } from "lucide-react";
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
 
@@ -143,6 +143,40 @@ export default function PdfForm() {
       loadDropdownData();
     } catch (error) {
       toast({ title: "Hiba mentés közben", variant: "destructive" });
+    }
+  };
+
+  const handleSaveJob = async () => {
+    const formData = form.getValues();
+    if (!formData.rendszam && !formData.alvazszam) {
+      toast({
+        title: "Hiányzó Adat",
+        description: "A mentéshez legalább a rendszámot vagy az alvázszámot adja meg.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await addDoc(collection(db, "savedJobs"), {
+        formData,
+        createdAt: serverTimestamp(),
+        rendszam: formData.rendszam || formData.alvazszam,
+      });
+      toast({
+        title: "Sikeres Mentés",
+        description: "A munka elmentve 48 órára. A 'Mentett Munkák' fülön érheti el.",
+      });
+      form.reset(getDefaultValues());
+    } catch (error) {
+      console.error("Error saving job:", error);
+      toast({
+        title: "Hiba a munka mentése közben",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -417,7 +451,7 @@ export default function PdfForm() {
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Összes PDF nyomtatása
                 </Button>
-                <Button type="button" variant="secondary" onClick={() => onPdfAction('main')} disabled={isProcessing}>
+                 <Button type="button" variant="secondary" onClick={() => onPdfAction('main')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Adásvételi nyomtatása
                 </Button>
@@ -428,6 +462,10 @@ export default function PdfForm() {
                  <Button type="button" variant="secondary" onClick={() => onPdfAction('meghatalmazas')} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Meghatalmazás nyomtatása
+                </Button>
+                <Button type="button" variant="gooey" onClick={handleSaveJob} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileClock className="mr-2 h-4 w-4" />}
+                    Mentés 48 órára
                 </Button>
                 <Button type="button" variant="outline" onClick={() => form.reset(getDefaultValues())} disabled={isProcessing}>
                     <Trash2 className="mr-2 h-4 w-4" />

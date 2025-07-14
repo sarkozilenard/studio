@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Timestamp } from 'firebase/firestore';
 
 export const FormSchema = z.object({
   // Vehicle data
@@ -78,6 +79,13 @@ export type Witness = {
   idNumber: string;
   timestamp?: any;
 };
+
+export type SavedJob = {
+  id: string;
+  formData: FormValues;
+  createdAt: Timestamp;
+  rendszam: string;
+}
 
 // Schemas for generatePdf flow
 export const GeneratePdfInputSchema = z.object({
