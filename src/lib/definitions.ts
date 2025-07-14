@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import type { Timestamp } from 'firebase/firestore';
 
-export const FormSchema = z.object({
+export const FormValuesSchema = z.object({
   // Vehicle data
   rendszam: z.string().optional(),
   alvazszam: z.string().optional(),
@@ -60,8 +59,9 @@ export const FormSchema = z.object({
   egyeb_fizetesi_mod: z.string().optional(),
   fizetesi_datum: z.string().optional(),
 });
+export const FormSchema = FormValuesSchema; // for backward compatibility if used elsewhere
 
-export type FormValues = z.infer<typeof FormSchema>;
+export type FormValues = z.infer<typeof FormValuesSchema>;
 
 export type Seller = {
   id: string;
@@ -80,12 +80,15 @@ export type Witness = {
   timestamp?: any;
 };
 
-export type SavedJob = {
-  id: string;
-  formData: FormValues;
-  createdAt: Timestamp;
-  rendszam: string;
-}
+export const SavedJobSchema = z.object({
+  id: z.string(),
+  formData: FormValuesSchema,
+  createdAt: z.string(), // Using string for serializable date
+  rendszam: z.string(),
+});
+
+export type SavedJob = z.infer<typeof SavedJobSchema>;
+
 
 // Schemas for generatePdf flow
 export const GeneratePdfInputSchema = z.object({
@@ -99,3 +102,27 @@ export const GeneratePdfOutputSchema = z.object({
     filename: z.string().describe('The suggested filename for the PDF.'),
 });
 export type GeneratePdfOutput = z.infer<typeof GeneratePdfOutputSchema>;
+
+
+// Schemas for Job flows
+export const SaveJobInputSchema = z.object({
+  formData: FormValuesSchema,
+});
+export type SaveJobInput = z.infer<typeof SaveJobInputSchema>;
+
+export const SaveJobOutputSchema = z.object({
+  success: z.boolean(),
+  jobId: z.string().optional(),
+  error: z.string().optional(),
+});
+export type SaveJobOutput = z.infer<typeof SaveJobOutputSchema>;
+
+export const GetSavedJobsOutputSchema = z.object({
+    jobs: z.array(SavedJobSchema),
+});
+export type GetSavedJobsOutput = z.infer<typeof GetSavedJobsOutputSchema>;
+
+export const DeleteJobInputSchema = z.object({
+    jobId: z.string(),
+});
+export type DeleteJobInput = z.infer<typeof DeleteJobInputSchema>;

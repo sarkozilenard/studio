@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/convert-number-to-words.ts';
 import '@/ai/flows/generate-pdf-flow.ts';
+import '@/ai/flows/job-flows.ts';

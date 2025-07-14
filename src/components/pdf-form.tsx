@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
 import { generateAndHandlePdf } from "@/lib/pdf-utils";
 import { Download, Printer, Save, Trash2, Loader2, FileClock } from "lucide-react";
+import { saveJob } from "@/ai/flows/job-flows";
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
 
@@ -159,20 +160,21 @@ export default function PdfForm() {
 
     setIsProcessing(true);
     try {
-      await addDoc(collection(db, "savedJobs"), {
-        formData,
-        createdAt: serverTimestamp(),
-        rendszam: formData.rendszam || formData.alvazszam,
-      });
-      toast({
-        title: "Sikeres Mentés",
-        description: "A munka elmentve 48 órára. A 'Mentett Munkák' fülön érheti el.",
-      });
-      form.reset(getDefaultValues());
+      const result = await saveJob({ formData });
+      if (result.success) {
+        toast({
+          title: "Sikeres Mentés",
+          description: "A munka elmentve 48 órára. A 'Mentett Munkák' fülön érheti el.",
+        });
+        form.reset(getDefaultValues());
+      } else {
+        throw new Error(result.error || "Ismeretlen hiba a szerveren.");
+      }
     } catch (error) {
       console.error("Error saving job:", error);
       toast({
         title: "Hiba a munka mentése közben",
+        description: (error as Error).message,
         variant: "destructive",
       });
     } finally {
@@ -463,7 +465,7 @@ export default function PdfForm() {
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
                     Meghatalmazás nyomtatása
                 </Button>
-                <Button type="button" variant="gooey" onClick={handleSaveJob} disabled={isProcessing}>
+                <Button type="button" onClick={handleSaveJob} disabled={isProcessing}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileClock className="mr-2 h-4 w-4" />}
                     Mentés 48 órára
                 </Button>
