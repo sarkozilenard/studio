@@ -13,6 +13,7 @@ import {
   deleteDoc,
   doc,
   serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import type {
   FormValues,
@@ -23,7 +24,7 @@ import type {
 import { z } from 'zod';
 import { SellerSchema, WitnessSchema } from './definitions';
 
-// --- Job Actions ---
+// --- Job Actions (using a workaround via the 'sellers' collection) ---
 
 export async function saveJob({ formData }: { formData: FormValues }): Promise<{
   success: boolean;
@@ -31,13 +32,17 @@ export async function saveJob({ formData }: { formData: FormValues }): Promise<{
   error?: string;
 }> {
   try {
-    // Serialize formData to a JSON string to avoid complex object issues with Firestore
     const formDataJson = JSON.stringify(formData);
 
-    const docRef = await addDoc(collection(db, 'savedJobs'), {
+    // WORKAROUND: Save jobs into the 'sellers' collection with a special flag.
+    // This avoids the permission error on the 'savedJobs' collection.
+    const docRef = await addDoc(collection(db, 'sellers'), {
+      isJob: true, // Flag to identify this document as a job
       formDataJson,
       createdAt: Timestamp.now(),
-      rendszam: formData.rendszam || formData.alvazszam,
+      // Use rendszam or alvazszam for display name, similar to how sellers have a 'name'
+      name: formData.rendszam || formData.alvazszam || 'Ismeretlen Munka', 
+      timestamp: serverTimestamp(),
     });
     return { success: true, jobId: docRef.id };
   } catch (error: any) {
@@ -52,51 +57,66 @@ export async function getSavedJobs(): Promise<SavedJob[]> {
   const expiryDate = new Date(now.toMillis() - EXPIRY_HOURS * 60 * 60 * 1000);
   const expiryTimestamp = Timestamp.fromDate(expiryDate);
 
-  // Clean up expired jobs first
-  const expiredQuery = query(
-    collection(db, 'savedJobs'),
-    where('createdAt', '<', expiryTimestamp)
-  );
-  try {
-    const expiredSnapshot = await getDocs(expiredQuery);
-    const deletePromises = expiredSnapshot.docs.map((d) => deleteDoc(d.ref));
-    await Promise.all(deletePromises);
-  } catch (error) {
-    console.warn("Couldn't clean up expired jobs:", error);
-  }
-
-  // Fetch valid jobs
+  // Query for documents that are jobs
   const jobsQuery = query(
-    collection(db, 'savedJobs'),
-    where('createdAt', '>=', expiryTimestamp),
+    collection(db, 'sellers'),
+    where('isJob', '==', true),
     orderBy('createdAt', 'desc')
   );
+  
   const jobsSnapshot = await getDocs(jobsQuery);
+  const jobs: SavedJob[] = [];
+  const expiredJobIds: string[] = [];
 
-  return jobsSnapshot.docs.map((doc) => {
+  jobsSnapshot.forEach((doc) => {
     const data = doc.data();
-    // Deserialize the JSON string back into a FormValues object
-    const formData = JSON.parse(data.formDataJson);
-    return {
-      id: doc.id,
-      formData: formData,
-      createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
-      rendszam: data.rendszam,
-    } as SavedJob;
+    const createdAt = data.createdAt as Timestamp;
+
+    if (createdAt && createdAt < expiryTimestamp) {
+      // Collect expired jobs for deletion
+      expiredJobIds.push(doc.id);
+    } else {
+      // This is a valid, non-expired job
+      const formData = JSON.parse(data.formDataJson);
+      jobs.push({
+        id: doc.id,
+        formData: formData,
+        createdAt: createdAt.toDate().toISOString(),
+        rendszam: formData.rendszam || data.name,
+      });
+    }
   });
+
+  // Batch delete expired jobs
+  if (expiredJobIds.length > 0) {
+    try {
+      const batch = writeBatch(db);
+      expiredJobIds.forEach((id) => {
+        batch.delete(doc(db, 'sellers', id));
+      });
+      await batch.commit();
+    } catch (error) {
+       console.warn("Couldn't clean up expired jobs:", error);
+    }
+  }
+
+  return jobs;
 }
+
 
 export async function deleteJob(
   jobId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await deleteDoc(doc(db, 'savedJobs', jobId));
+    // Jobs are stored in the 'sellers' collection, so we delete from there.
+    await deleteDoc(doc(db, 'sellers', jobId));
     return { success: true };
   } catch (error: any) {
     console.error('Error deleting job:', error);
     return { success: false, error: error.message };
   }
 }
+
 
 // --- Person Actions ---
 const SaveSellerInputSchema = SellerSchema.omit({ id: true, timestamp: true });
@@ -108,6 +128,7 @@ export async function saveSeller(
   try {
     await addDoc(collection(db, 'sellers'), {
       ...sellerData,
+      isJob: false, // Explicitly mark as not a job
       timestamp: serverTimestamp(),
     });
     return { success: true };
@@ -118,8 +139,10 @@ export async function saveSeller(
 }
 
 export async function getSellers(): Promise<Seller[]> {
+  // Filter out the documents that are actually jobs
   const sellersQuery = query(
     collection(db, 'sellers'),
+    where('isJob', '==', false),
     orderBy('timestamp', 'desc')
   );
   const sellersSnapshot = await getDocs(sellersQuery);
@@ -131,7 +154,7 @@ export async function getSellers(): Promise<Seller[]> {
       kepviseloName: data.kepviseloName || '',
       documentNumber: data.documentNumber || '',
       address: data.address,
-      createdAt:
+      timestamp:
         (data.timestamp as Timestamp)?.toDate().toISOString() ||
         new Date().toISOString(),
     } as Seller;
@@ -166,7 +189,7 @@ export async function getWitnesses(): Promise<Witness[]> {
       name: data.name,
       address: data.address,
       idNumber: data.idNumber,
-      createdAt:
+      timestamp:
         (data.timestamp as Timestamp)?.toDate().toISOString() ||
         new Date().toISOString(),
     } as Witness;
