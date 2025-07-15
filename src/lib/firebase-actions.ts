@@ -7,13 +7,13 @@ import {
   addDoc,
   getDocs,
   query,
-  where,
   Timestamp,
   orderBy,
   deleteDoc,
   doc,
   serverTimestamp,
   writeBatch,
+  where,
 } from 'firebase/firestore';
 import type {
   FormValues,
@@ -24,7 +24,7 @@ import type {
 import { z } from 'zod';
 import { SellerSchema, WitnessSchema } from './definitions';
 
-// --- Job Actions (using a workaround via the 'sellers' collection) ---
+// --- Combined Actions for Sellers and Jobs ---
 
 export async function saveJob({ formData }: { formData: FormValues }): Promise<{
   success: boolean;
@@ -34,15 +34,11 @@ export async function saveJob({ formData }: { formData: FormValues }): Promise<{
   try {
     const formDataJson = JSON.stringify(formData);
 
-    // WORKAROUND: Save jobs into the 'sellers' collection with a special flag.
-    // This avoids the permission error on the 'savedJobs' collection.
     const docRef = await addDoc(collection(db, 'sellers'), {
-      isJob: true, // Flag to identify this document as a job
+      isJob: true,
       formDataJson,
       createdAt: Timestamp.now(),
-      // Use rendszam or alvazszam for display name, similar to how sellers have a 'name'
       name: formData.rendszam || formData.alvazszam || 'Ismeretlen Munka', 
-      timestamp: serverTimestamp(),
     });
     return { success: true, jobId: docRef.id };
   } catch (error: any) {
@@ -56,38 +52,30 @@ export async function getSavedJobs(): Promise<SavedJob[]> {
   const now = Timestamp.now();
   const expiryDate = new Date(now.toMillis() - EXPIRY_HOURS * 60 * 60 * 1000);
   const expiryTimestamp = Timestamp.fromDate(expiryDate);
-
-  // Query for documents that are jobs
-  const jobsQuery = query(
-    collection(db, 'sellers'),
-    where('isJob', '==', true),
-    orderBy('createdAt', 'desc')
-  );
   
-  const jobsSnapshot = await getDocs(jobsQuery);
+  const allDocsQuery = query(collection(db, 'sellers'));
+  const allDocsSnapshot = await getDocs(allDocsQuery);
   const jobs: SavedJob[] = [];
   const expiredJobIds: string[] = [];
 
-  jobsSnapshot.forEach((doc) => {
+  allDocsSnapshot.forEach((doc) => {
     const data = doc.data();
-    const createdAt = data.createdAt as Timestamp;
-
-    if (createdAt && createdAt < expiryTimestamp) {
-      // Collect expired jobs for deletion
-      expiredJobIds.push(doc.id);
-    } else {
-      // This is a valid, non-expired job
-      const formData = JSON.parse(data.formDataJson);
-      jobs.push({
-        id: doc.id,
-        formData: formData,
-        createdAt: createdAt.toDate().toISOString(),
-        rendszam: formData.rendszam || data.name,
-      });
+    if (data.isJob === true) {
+      const createdAt = data.createdAt as Timestamp;
+      if (createdAt && createdAt.toMillis() < expiryTimestamp.toMillis()) {
+        expiredJobIds.push(doc.id);
+      } else {
+        const formData = JSON.parse(data.formDataJson);
+        jobs.push({
+          id: doc.id,
+          formData: formData,
+          createdAt: createdAt ? createdAt.toDate().toISOString() : new Date().toISOString(),
+          rendszam: formData.rendszam || data.name,
+        });
+      }
     }
   });
 
-  // Batch delete expired jobs
   if (expiredJobIds.length > 0) {
     try {
       const batch = writeBatch(db);
@@ -100,15 +88,14 @@ export async function getSavedJobs(): Promise<SavedJob[]> {
     }
   }
 
-  return jobs;
+  // Sort client-side
+  return jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
-
 
 export async function deleteJob(
   jobId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Jobs are stored in the 'sellers' collection, so we delete from there.
     await deleteDoc(doc(db, 'sellers', jobId));
     return { success: true };
   } catch (error: any) {
@@ -128,7 +115,7 @@ export async function saveSeller(
   try {
     await addDoc(collection(db, 'sellers'), {
       ...sellerData,
-      isJob: false, // Explicitly mark as not a job
+      isJob: false,
       timestamp: serverTimestamp(),
     });
     return { success: true };
@@ -139,26 +126,26 @@ export async function saveSeller(
 }
 
 export async function getSellers(): Promise<Seller[]> {
-  // Filter out the documents that are actually jobs
-  const sellersQuery = query(
-    collection(db, 'sellers'),
-    where('isJob', '==', false),
-    orderBy('timestamp', 'desc')
-  );
-  const sellersSnapshot = await getDocs(sellersQuery);
-  return sellersSnapshot.docs.map((doc) => {
+  const allDocsQuery = query(collection(db, 'sellers'));
+  const allDocsSnapshot = await getDocs(allDocsQuery);
+  const sellers: Seller[] = [];
+
+  allDocsSnapshot.forEach((doc) => {
     const data = doc.data();
-    return {
-      id: doc.id,
-      name: data.name,
-      kepviseloName: data.kepviseloName || '',
-      documentNumber: data.documentNumber || '',
-      address: data.address,
-      timestamp:
-        (data.timestamp as Timestamp)?.toDate().toISOString() ||
-        new Date().toISOString(),
-    } as Seller;
+    if (data.isJob !== true) {
+       sellers.push({
+          id: doc.id,
+          name: data.name,
+          kepviseloName: data.kepviseloName || '',
+          documentNumber: data.documentNumber || '',
+          address: data.address,
+          timestamp: (data.timestamp as Timestamp)?.toDate().toISOString() || new Date().toISOString(),
+       });
+    }
   });
+
+  // Sort client-side
+  return sellers.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
 export async function saveWitness(
@@ -177,12 +164,9 @@ export async function saveWitness(
 }
 
 export async function getWitnesses(): Promise<Witness[]> {
-  const witnessesQuery = query(
-    collection(db, 'witnesses'),
-    orderBy('timestamp', 'desc')
-  );
+  const witnessesQuery = query(collection(db, 'witnesses'));
   const witnessesSnapshot = await getDocs(witnessesQuery);
-  return witnessesSnapshot.docs.map((doc) => {
+  const witnesses = witnessesSnapshot.docs.map((doc) => {
     const data = doc.data();
     return {
       id: doc.id,
@@ -194,6 +178,8 @@ export async function getWitnesses(): Promise<Witness[]> {
         new Date().toISOString(),
     } as Witness;
   });
+  // Sort client-side
+  return witnesses.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
 export async function deletePerson(
@@ -203,8 +189,7 @@ export async function deletePerson(
   try {
     await deleteDoc(doc(db, collectionName, id));
     return { success: true };
-  } catch (error: any)
-{
+  } catch (error: any) {
     console.error(`Error deleting from ${collectionName}:`, error);
     return { success: false, error: error.message };
   }
