@@ -169,7 +169,11 @@ async function mergePdfs(pdfBytesArray: Uint8Array[]): Promise<Uint8Array> {
     for (const pdfBytes of pdfBytesArray) {
         const pdf = await PDFDocument.load(pdfBytes);
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
+        copiedPages.forEach((page) => {
+            // Attempt to set margins to zero to maximize content area
+            page.setMediaBox(0, 0, page.getWidth(), page.getHeight());
+            mergedPdf.addPage(page);
+        });
     }
     return mergedPdf.save();
 }
