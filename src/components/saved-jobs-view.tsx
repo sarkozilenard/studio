@@ -131,13 +131,17 @@ export default function SavedJobsView() {
                  const expiryTime = new Date(job.createdAt).getTime() + EXPIRY_HOURS * 60 * 60 * 1000;
                  if (expiryTime < Date.now()) return null; // Don't render expired jobs client-side either
 
+                const vehicleIdentifier = [job.formData.rendszam, job.formData.alvazszam]
+                    .filter(Boolean) // Remove empty or null values
+                    .join(" / ");
+
                 return (
                     <li key={job.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors gap-4">
                         <div className="flex items-center gap-4">
                             <Car className="h-6 w-6 text-primary" />
                             <div>
-                                <p className="font-semibold">{job.rendszam}</p>
-                                <p className="text-sm text-muted-foreground">Vevő: {job.formData.vevo_nev}</p>
+                                <p className="font-semibold">{vehicleIdentifier || 'Nincs azonosító'}</p>
+                                <p className="text-sm text-muted-foreground">Vevő: {job.formData.vevo_nev || 'Nincs megadva'}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2 ml-auto">
