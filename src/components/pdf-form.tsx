@@ -14,8 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 import { convertNumberToWords } from "@/ai/flows/convert-number-to-words";
 import { generateAndHandlePdf } from "@/lib/pdf-utils";
 import { Printer, Save, Trash2, Loader2, FileClock } from "lucide-react";
-import { saveJob } from "@/ai/flows/job-flows";
-import { saveSeller, getSellers, saveWitness, getWitnesses } from "@/ai/flows/person-flows";
+import { saveJob, saveSeller, getSellers, saveWitness, getWitnesses } from "@/lib/firebase-actions";
 
 
 const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
@@ -61,9 +60,9 @@ export default function PdfForm() {
 
   const loadDropdownData = useCallback(async () => {
     try {
-      const [{ sellers }, { witnesses }] = await Promise.all([getSellers(), getWitnesses()]);
-      setSellers(sellers);
-      setWitnesses(witnesses);
+      const [sellersData, witnessesData] = await Promise.all([getSellers(), getWitnesses()]);
+      setSellers(sellersData);
+      setWitnesses(witnessesData);
     } catch (error) {
       console.error("Error loading dropdown data:", error);
       toast({ title: "Hiba a mentett adatok betöltésekor", variant: "destructive" });
@@ -106,7 +105,7 @@ export default function PdfForm() {
 
   const handleSave = async (type: "seller" | "witness1" | "witness2") => {
     let successMessage: string;
-    let result;
+    let result: { success: boolean, error?: string };
 
     if (type === 'seller') {
       const dataToSave = {

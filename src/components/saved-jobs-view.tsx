@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { generateAndHandlePdf } from "@/lib/pdf-utils";
-import { getSavedJobs, deleteJob } from "@/ai/flows/job-flows";
+import { getSavedJobs, deleteJob } from "@/lib/firebase-actions";
 
 function Countdown({ expiryTimestamp }: { expiryTimestamp: number }) {
   const calculateTimeLeft = useCallback(() => {
@@ -61,7 +61,7 @@ export default function SavedJobsView() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { jobs } = await getSavedJobs();
+      const jobs = await getSavedJobs();
       setSavedJobs(jobs);
     } catch (error) {
       console.error("Error fetching saved jobs:", error);
@@ -80,7 +80,7 @@ export default function SavedJobsView() {
 
   const handleDelete = async (id: string) => {
     try {
-      const result = await deleteJob({ jobId: id });
+      const result = await deleteJob(id);
       if (result.success) {
         toast({ title: "Sikeres törlés", description: "A mentett munka eltávolítva." });
         fetchData(); // Refresh data

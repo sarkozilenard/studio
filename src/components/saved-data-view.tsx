@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { getSellers, getWitnesses, deletePerson } from "@/ai/flows/person-flows";
+import { getSellers, getWitnesses, deletePerson } from "@/lib/firebase-actions";
 
 export default function SavedDataView() {
   const [sellers, setSellers] = useState<Seller[]>([]);
@@ -28,12 +28,12 @@ export default function SavedDataView() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [{ sellers }, { witnesses }] = await Promise.all([getSellers(), getWitnesses()]);
-      setSellers(sellers);
-      setWitnesses(witnesses);
+      const [sellersData, witnessesData] = await Promise.all([getSellers(), getWitnesses()]);
+      setSellers(sellersData);
+      setWitnesses(witnessesData);
     } catch (error) {
       console.error("Error fetching saved data:", error);
-      toast({ title: "Hiba az adatok betöltésekor.", variant: "destructive" });
+      toast({ title: "Hiba az adatok betöltésekor.", description: (error as Error).message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -45,7 +45,7 @@ export default function SavedDataView() {
 
   const handleDelete = async (collectionName: 'sellers' | 'witnesses', id: string) => {
     try {
-      const result = await deletePerson({ collectionName, id });
+      const result = await deletePerson(collectionName, id);
       if (result.success) {
         toast({ title: "Sikeres törlés", description: "Az adat eltávolítva." });
         fetchData(); // Refresh data
