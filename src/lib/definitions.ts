@@ -87,8 +87,9 @@ export type Witness = z.infer<typeof WitnessSchema>;
 
 export const SavedJobSchema = z.object({
   id: z.string(),
-  formData: FormValuesSchema,
-  createdAt: z.string(), // Using string for serializable date
+  // The actual data is a JSON string in Firestore, but we parse it to FormValues on the client
+  formData: FormValuesSchema, 
+  createdAt: z.string(), 
   rendszam: z.string(),
 });
 export type SavedJob = z.infer<typeof SavedJobSchema>;

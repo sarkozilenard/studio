@@ -31,8 +31,11 @@ export async function saveJob({ formData }: { formData: FormValues }): Promise<{
   error?: string;
 }> {
   try {
+    // Serialize formData to a JSON string to avoid complex object issues with Firestore
+    const formDataJson = JSON.stringify(formData);
+
     const docRef = await addDoc(collection(db, 'savedJobs'), {
-      formData,
+      formDataJson,
       createdAt: Timestamp.now(),
       rendszam: formData.rendszam || formData.alvazszam,
     });
@@ -72,9 +75,11 @@ export async function getSavedJobs(): Promise<SavedJob[]> {
 
   return jobsSnapshot.docs.map((doc) => {
     const data = doc.data();
+    // Deserialize the JSON string back into a FormValues object
+    const formData = JSON.parse(data.formDataJson);
     return {
       id: doc.id,
-      formData: data.formData,
+      formData: formData,
       createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
       rendszam: data.rendszam,
     } as SavedJob;
