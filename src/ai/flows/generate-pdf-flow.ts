@@ -27,23 +27,8 @@ const fillFormField = (form: any, fieldName: string, value: string | undefined, 
     if (value) {
         try {
             const field = form.getTextField(fieldName);
-            // We draw text manually for better control over font and positioning
-            const widgets = field.acroField.getWidgets();
-            widgets.forEach(widget => {
-                const { x, y, width, height } = widget.getRectangle();
-                const page = widget.getPage();
-                
-                page.drawText(value, {
-                    x: x + 2,
-                    y: y + height / 2 - FONT_SIZE / 2 + 1,
-                    font: font,
-                    size: FONT_SIZE,
-                    color: rgb(0, 0, 0),
-                });
-            });
-            // Clear the original field text to avoid overlap
-            field.setText('');
-
+            field.setText(value);
+            field.updateAppearances(font);
         } catch (e) {
             console.warn(`Field "${fieldName}" not found in PDF for value "${value}".`);
         }
@@ -62,63 +47,63 @@ async function fillAndGetPdfBytes(templateBytes: Buffer, data: FormValues, fille
     const form = pdfDoc.getForm();
     fillerFn(form, data, customFont);
 
-    form.flatten();
+    // No need to call form.flatten() as updateAppearances handles the visual update.
 
     return pdfDoc.save();
 }
 
 function fillMainPdfForm(form: any, data: FormValues, font: any) {
-    fillFormField(form, 'rendszám', data.rendszam, font);
-    fillFormField(form, 'gyártmány_típus', data.gyartmany_tipus, font);
-    fillFormField(form, 'alvázszám', data.alvazszam, font);
-    fillFormField(form, 'motorszám', data.motorszam, font);
-    fillFormField(form, 'km_állás', data.km_allas, font);
-    fillFormField(form, 'törzskönyv_szám', data.torzskonyv_szam, font);
-    fillFormField(form, 'forgalmi_engedély_száma', data.forgalmi_szam, font);
-    fillFormField(form, 'km_óra_állás_rögzítés_dátuma', data.km_idopont, font);
+    fillFormField(form, 'rendszam', data.rendszam, font);
+    fillFormField(form, 'gyartmany_tipus', data.gyartmany_tipus, font);
+    fillFormField(form, 'alvazszam', data.alvazszam, font);
+    fillFormField(form, 'motorszam', data.motorszam, font);
+    fillFormField(form, 'km_allas', data.km_allas, font);
+    fillFormField(form, 'torzskonyv_szam', data.torzskonyv_szam, font);
+    fillFormField(form, 'forgalmi_szam', data.forgalmi_szam, font);
+    fillFormField(form, 'km_idopont', data.km_idopont, font);
 
-    fillFormField(form, 'ceg_neve_elado', data.ceg_neve, font);
-    fillFormField(form, 'ceg_kepviselo_elado', data.ceg_kepviselo, font);
-    fillFormField(form, 'cegjegyzekszam_elado', data.cegjegyzekszam, font);
-    fillFormField(form, 'ceg_szekhely_elado', data.szekhely, font);
+    fillFormField(form, 'ceg_neve', data.ceg_neve, font);
+    fillFormField(form, 'ceg_kepviselo', data.ceg_kepviselo, font);
+    fillFormField(form, 'cegjegyzekszam', data.cegjegyzekszam, font);
+    fillFormField(form, 'szekhely', data.szekhely, font);
 
-    fillFormField(form, 'vevo_neve', data.vevo_nev, font);
-    fillFormField(form, 'vevo_születési_hely_ido', data.vevo_szul_hely_ido, font);
+    fillFormField(form, 'vevo_nev', data.vevo_nev, font);
+    fillFormField(form, 'vevo_szul_hely_ido', data.vevo_szul_hely_ido, font);
     fillFormField(form, 'vevo_anyja_neve', data.vevo_anyja_neve, font);
-    fillFormField(form, 'vevo_okmány_száma', data.vevo_okmany_szam, font);
-    fillFormField(form, 'vevo_lakcím', data.vevo_lakcim, font);
+    fillFormField(form, 'vevo_okmany_szam', data.vevo_okmany_szam, font);
+    fillFormField(form, 'vevo_lakcim', data.vevo_lakcim, font);
 
-    fillFormField(form, 'átadás_év', data.atadas_ev, font);
-    fillFormField(form, 'átadás_hónap', data.atadas_ho, font);
-    fillFormField(form, 'átadás_nap', data.atadas_nap, font);
-    fillFormField(form, 'hatály_év', data.hataly_ev, font);
-    fillFormField(form, 'hatály_hónap', data.hataly_ho, font);
-    fillFormField(form, 'hatály_nap', data.hataly_nap, font);
-    fillFormField(form, 'birtokba_adás_év', data.birtok_ev, font);
-    fillFormField(form, 'birtokba_adás_hónap', data.birtok_ho, font);
-    fillFormField(form, 'birtokba_adás_nap', data.birtok_nap, font);
-    fillFormField(form, 'birtokba_adás_óra', data.birtok_ora, font);
-    fillFormField(form, 'birtokba_adás_perc', data.birtok_perc, font);
-    fillFormField(form, 'szerződés_kelte_év', data.szerzodes_ev, font);
-    fillFormField(form, 'szerződés_kelte_hónap', data.szerzodes_ho, font);
-    fillFormField(form, 'szerződés_kelte_nap', data.szerrzodes_nap, font);
+    fillFormField(form, 'atadas_ev', data.atadas_ev, font);
+    fillFormField(form, 'atadas_ho', data.atadas_ho, font);
+    fillFormField(form, 'atadas_nap', data.atadas_nap, font);
+    fillFormField(form, 'hataly_ev', data.hataly_ev, font);
+    fillFormField(form, 'hataly_ho', data.hataly_ho, font);
+    fillFormField(form, 'hataly_nap', data.hataly_nap, font);
+    fillFormField(form, 'birtok_ev', data.birtok_ev, font);
+    fillFormField(form, 'birtok_ho', data.birtok_ho, font);
+    fillFormField(form, 'birtok_nap', data.birtok_nap, font);
+    fillFormField(form, 'birtok_ora', data.birtok_ora, font);
+    fillFormField(form, 'birtok_perc', data.birtok_perc, font);
+    fillFormField(form, 'szerzodes_ev', data.szerzodes_ev, font);
+    fillFormField(form, 'szerzodes_ho', data.szerzodes_ho, font);
+    fillFormField(form, 'szerrzodes_nap', data.szerrzodes_nap, font);
 
-    fillFormField(form, 'tanú_1_neve', data.tanu1_nev, font);
-    fillFormField(form, 'tanú_1_lakcím', data.tanu1_lakcim, font);
-    fillFormField(form, 'tanú_1_szig', data.tanu1_szig, font);
-    fillFormField(form, 'tanú_2_neve', data.tanu2_nev, font);
-    fillFormField(form, 'tanú_2_lakcím', data.tanu2_lakcim, font);
-    fillFormField(form, 'tanú_2_szig', data.tanu2_szig, font);
+    fillFormField(form, 'tanu1_nev', data.tanu1_nev, font);
+    fillFormField(form, 'tanu1_lakcim', data.tanu1_lakcim, font);
+    fillFormField(form, 'tanu1_szig', data.tanu1_szig, font);
+    fillFormField(form, 'tanu2_nev', data.tanu2_nev, font);
+    fillFormField(form, 'tanu2_lakcim', data.tanu2_lakcim, font);
+    fillFormField(form, 'tanu2_szig', data.tanu2_szig, font);
 
-    fillFormField(form, 'vételár_számmal', data.vetelar_szam, font);
-    fillFormField(form, 'vételár_betűvel', data.vetelar_betukkel, font);
+    fillFormField(form, 'vetelar_szam', data.vetelar_szam, font);
+    fillFormField(form, 'vetelar_betukkel', data.vetelar_betukkel, font);
 
     let fizetesiMod = data.fizetesi_mod;
     if (fizetesiMod === 'egyéb') {
         fizetesiMod = data.egyeb_fizetesi_mod;
     }
-    fillFormField(form, 'fizetési_mód', fizetesiMod, font);
-    fillFormField(form, 'fizetés_dátuma', data.fizetesi_datum, font);
+    fillFormField(form, 'fizetesi_mod', fizetesiMod, font);
+    fillFormField(form, 'fizetesi_datum', data.fizetesi_datum, font);
 }
 
 function fillWarrantyPdfForm(form: any, data: FormValues, font: any) {
@@ -126,30 +111,30 @@ function fillWarrantyPdfForm(form: any, data: FormValues, font: any) {
     const monthNames = ["január", "február", "március", "április", "május", "június", "július", "augusztus", "szeptember", "október", "november", "december"];
     const formattedDateForPdfText = `${today.getFullYear()}. ${monthNames[today.getMonth()]} ${today.getDate()}.`;
 
-    fillFormField(form, 'alvázszám_kellék', data.alvazszam, font);
-    fillFormField(form, 'további_információk', data.kell_tovabbi_info, font);
-    fillFormField(form, 'dátum_kellék', formattedDateForPdfText, font);
+    fillFormField(form, 'alvazszam', data.alvazszam, font);
+    fillFormField(form, 'tovabbi_informaciok', data.kell_tovabbi_info, font);
+    fillFormField(form, 'datum', formattedDateForPdfText, font);
 }
 
 function fillAuthPdfForm(form: any, data: FormValues, font: any) {
-    fillFormField(form, 'meghatalmazó_neve', data.vevo_nev, font);
-    fillFormField(form, 'meghatalmazó_lakcím', data.vevo_lakcim, font);
-    fillFormField(form, 'meghatalmazó_szig_szám', data.vevo_okmany_szam, font);
-    fillFormField(form, 'meghatalmazó_anyja_neve', data.vevo_anyja_neve, font);
-    fillFormField(form, 'meghatalmazó_szül_hely_idő', data.vevo_szul_hely_ido, font);
-    fillFormField(form, 'meghatalmazott_neve_címe', data.meghatalmazott_adatok, font);
-    fillFormField(form, 'meghatalmazás_rendszám', data.rendszam, font);
-    fillFormField(form, 'meghatalmazás_gyártmány', data.gyartmany_tipus, font);
-    fillFormField(form, 'meghatalmazás_alvázszám', data.alvazszam, font);
-    fillFormField(form, 'meghatalmazás_kelte_év', data.szerzodes_ev, font);
-    fillFormField(form, 'meghatalmazás_kelte_hónap', data.szerzodes_ho, font);
-    fillFormField(form, 'meghatalmazás_kelte_nap', data.szerrzodes_nap, font);
-    fillFormField(form, 'meghatalmazás_tanú1_név', data.tanu1_nev, font);
-    fillFormField(form, 'meghatalmazás_tanú1_lakcím', data.tanu1_lakcim, font);
-    fillFormField(form, 'meghatalmazás_tanú2_név', data.tanu2_nev, font);
-    fillFormField(form, 'meghatalmazás_tanú2_lakcím', data.tanu2_lakcim, font);
-    fillFormField(form, 'meghatalmazás_tanú1_szig', data.tanu1_szig, font);
-    fillFormField(form, 'meghatalmazás_tanú2_szig', data.tanu2_szig, font);
+    fillFormField(form, 'meghatalmazo_neve', data.vevo_nev, font);
+    fillFormField(form, 'meghatalmazo_lakcim', data.vevo_lakcim, font);
+    fillFormField(form, 'meghatalmazo_szig_szam', data.vevo_okmany_szam, font);
+    fillFormField(form, 'meghatalmazo_anyja_neve', data.vevo_anyja_neve, font);
+    fillFormField(form, 'meghatalmazo_szul_hely_ido', data.vevo_szul_hely_ido, font);
+    fillFormField(form, 'meghatalmazott_neve_cime', data.meghatalmazott_adatok, font);
+    fillFormField(form, 'meghatalmazas_rendszam', data.rendszam, font);
+    fillFormField(form, 'meghatalmazas_gyartmany', data.gyartmany_tipus, font);
+    fillFormField(form, 'meghatalmazas_alvazszam', data.alvazszam, font);
+    fillFormField(form, 'meghatalmazas_kelte_ev', data.szerzodes_ev, font);
+    fillFormField(form, 'meghatalmazas_kelte_ho', data.szerzodes_ho, font);
+    fillFormField(form, 'meghatalmazas_kelte_nap', data.szerrzodes_nap, font);
+    fillFormField(form, 'meghatalmazas_tanu1_nev', data.tanu1_nev, font);
+    fillFormField(form, 'meghatalmazas_tanu1_lakcim', data.tanu1_lakcim, font);
+    fillFormField(form, 'meghatalmazas_tanu2_nev', data.tanu2_nev, font);
+    fillFormField(form, 'meghatalmazas_tanu2_lakcim', data.tanu2_lakcim, font);
+    fillFormField(form, 'meghatalmazas_tanu1_szig', data.tanu1_szig, font);
+    fillFormField(form, 'meghatalmazas_tanu2_szig', data.tanu2_szig, font);
 }
 
 
